@@ -1,0 +1,62 @@
+import { usePrivy } from "@privy-io/react-auth";
+import { Redirect, Tabs } from "expo-router";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "@/design-system/theme";
+import { EercProvider } from "@/features/eerc/EercProvider";
+
+const TAB_ICON: Record<string, string> = {
+  home: "🏠",
+  activity: "🧾",
+  pay: "➕",
+  feed: "👥",
+  me: "👤",
+};
+
+// Authenticated shell: guard on Privy auth, then mount the eERC provider (which
+// only initialises once the embedded wallet is ready) and the bottom tabs.
+export default function SignedInLayout() {
+  const { ready, authenticated } = usePrivy();
+  const { colors } = useTheme();
+
+  if (!ready) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.bg }]}>
+        <ActivityIndicator color={colors.actBlue} />
+      </View>
+    );
+  }
+  if (!authenticated) {
+    return <Redirect href="/onboarding/welcome" />;
+  }
+
+  return (
+    <EercProvider>
+      <Tabs
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: colors.actBlue,
+          tabBarInactiveTintColor: colors.sub,
+          tabBarStyle: {
+            backgroundColor: colors.card,
+            borderTopColor: colors.line,
+          },
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 18, color }}>
+              {TAB_ICON[route.name] ?? "•"}
+            </Text>
+          ),
+        })}
+      >
+        <Tabs.Screen name="home" options={{ title: "Home" }} />
+        <Tabs.Screen name="activity" options={{ title: "Activity" }} />
+        <Tabs.Screen name="pay" options={{ title: "Pay" }} />
+        <Tabs.Screen name="feed" options={{ title: "Feed" }} />
+        <Tabs.Screen name="me" options={{ title: "Me" }} />
+      </Tabs>
+    </EercProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+});
