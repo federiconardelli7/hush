@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { FeedRow } from "@/components/FeedRow";
@@ -7,6 +8,7 @@ import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useFeed } from "@/features/payments/useFeed";
+import { displayName } from "@/lib/identity";
 
 const SCOPES = ["Friends", "Public", "You"] as const;
 
@@ -49,7 +51,34 @@ export default function Feed() {
       <FlatList
         data={items}
         keyExtractor={(p) => p.tx_hash}
-        renderItem={({ item }) => <FeedRow item={item} />}
+        renderItem={({ item }) => {
+          const mine =
+            item.sender_address === me || item.receiver_address === me;
+          if (!mine) return <FeedRow item={item} />;
+          const kind = item.sender_address === me ? "sent" : "received";
+          const counterparty = kind === "sent" ? item.receiver : item.sender;
+          const counterpartyAddress =
+            kind === "sent" ? item.receiver_address : item.sender_address;
+          return (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/receipt",
+                  params: {
+                    txHash: item.tx_hash,
+                    kind,
+                    name: displayName(counterparty, counterpartyAddress),
+                    address: counterpartyAddress,
+                    caption: item.caption ?? "",
+                    createdAt: item.created_at,
+                  },
+                })
+              }
+            >
+              <FeedRow item={item} />
+            </Pressable>
+          );
+        }}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl

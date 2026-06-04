@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
@@ -16,6 +17,7 @@ import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { groupByDate } from "@/features/payments/dateGroups";
 import { useActivity } from "@/features/payments/useActivity";
+import { displayName } from "@/lib/identity";
 
 const FILTERS = ["All", "Sent", "Received", "Added/Out"] as const;
 
@@ -93,14 +95,30 @@ export default function Activity() {
             </Text>
             <View style={[styles.card, { backgroundColor: colors.card }]}>
               {group.items.map((p, i) => (
-                <View
+                <Pressable
                   key={p.tx_hash}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/receipt",
+                      params: {
+                        txHash: p.tx_hash,
+                        kind: p.kind,
+                        name:
+                          p.kind === "deposit" || p.kind === "withdraw"
+                            ? ""
+                            : displayName(p.counterparty, p.counterpartyAddress ?? ""),
+                        address: p.counterpartyAddress ?? "",
+                        caption: p.caption ?? "",
+                        createdAt: p.created_at,
+                      },
+                    })
+                  }
                   style={
                     i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined
                   }
                 >
                   <ActivityRow item={p} />
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>

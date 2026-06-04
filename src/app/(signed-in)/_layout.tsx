@@ -38,6 +38,7 @@ export default function SignedInLayout() {
       <EercProvider>
         <ProfileGate>
           <Tabs
+            backBehavior="history"
             screenOptions={({ route }) => ({
               headerShown: false,
               tabBarActiveTintColor: colors.actBlue,
@@ -64,6 +65,7 @@ export default function SignedInLayout() {
             <Tabs.Screen name="contacts" options={{ href: null }} />
             <Tabs.Screen name="add-contact" options={{ href: null }} />
             <Tabs.Screen name="contact" options={{ href: null }} />
+            <Tabs.Screen name="receipt" options={{ href: null }} />
           </Tabs>
         </ProfileGate>
       </EercProvider>
