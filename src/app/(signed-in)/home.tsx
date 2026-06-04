@@ -7,18 +7,8 @@ import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
-import { EERC_DECIMALS } from "@/features/eerc/config/contracts";
 import { useEerc } from "@/features/eerc/useEerc";
-
-// parsedDecryptedBalance is a plain decimal string (decimals already applied).
-function formatBalance(parsed: string): string {
-  const n = Number(parsed);
-  if (!parsed || Number.isNaN(n)) return "$0.00";
-  return `$${n.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: EERC_DECIMALS,
-  })}`;
-}
+import { formatMoney } from "@/lib/money";
 
 export default function Home() {
   const { colors } = useTheme();
@@ -57,7 +47,7 @@ export default function Home() {
   return (
     <ScreenContainer>
       <BalanceCard
-        balance={balanceUnlocked ? formatBalance(eerc.parsedBalance) : "••••"}
+        balance={balanceUnlocked ? formatMoney(eerc.parsedBalance) : "••••"}
       />
 
       {!eerc.isRegistered ? (

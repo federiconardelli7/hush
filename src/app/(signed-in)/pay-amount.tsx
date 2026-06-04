@@ -64,6 +64,7 @@ export default function PayAmount() {
         });
       }
       await queryClient.invalidateQueries({ queryKey: ["feed"] });
+      await queryClient.invalidateQueries({ queryKey: ["activity"] });
       setDoneTx(transactionHash);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send the payment.");

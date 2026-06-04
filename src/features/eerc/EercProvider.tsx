@@ -1,6 +1,7 @@
 import { createContext, useMemo, useState, type ReactNode } from "react";
-import { useEERC } from "@avalabs/eerc-sdk";
+import { Poseidon, useEERC } from "@avalabs/eerc-sdk";
 import {
+  decodeFunctionData,
   erc20Abi,
   formatUnits,
   parseUnits,
@@ -14,6 +15,10 @@ import {
   EERC_DECIMALS,
   ERC20_DECIMALS,
 } from "@/features/eerc/config/contracts";
+import {
+  RECEIVER_AMOUNT_PCT_RANGE,
+  transferAbi,
+} from "@/features/eerc/transferAbi";
 import {
   cacheDecryptionKey,
   getCachedDecryptionKey,
@@ -54,6 +59,14 @@ export type EercContextValue = {
   ) => Promise<{ transactionHash: `0x${string}` }>;
   // Whether a recipient has registered for eERC (required before sending).
   isAddressRegistered: (address: `0x${string}`) => Promise<boolean>;
+  // Decrypt YOUR own amount for a payment (dollars string), client-side: sent →
+  // sender balance delta; received → the per-tx amountPCT. null if undecryptable.
+  decryptAmount: (
+    txHash: string,
+    role: "sent" | "received",
+  ) => Promise<string | null>;
+  // Decrypt the end-to-end encrypted memo (sender & receiver only).
+  decryptMemo: (txHash: string) => Promise<string | null>;
   refetchBalance: () => void;
   // Supabase auth binding (wallet → wallet_address JWT). boundWallet is what RLS
   // sees via current_wallet() — confirms the claim round-trips.
@@ -80,6 +93,8 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
     throw new Error("Wallet not ready.");
   },
   isAddressRegistered: async () => false,
+  decryptAmount: async () => null,
+  decryptMemo: async () => null,
   refetchBalance: () => {},
   supabaseStatus: "idle",
   supabaseBoundWallet: null,
@@ -205,6 +220,62 @@ function EercReady({
     return isRegistered;
   };
 
+  // Ensure the decryption key is loaded before any decrypt (same guard as
+  // send/deposit). Activity also gates this behind an unlock CTA, so in practice
+  // this returns the cached key — no per-row signing.
+  const ensureKey = async () => {
+    if (eerc.isDecryptionKeySet && decryptionKey) return decryptionKey;
+    const key = await eerc.generateDecryptionKey();
+    cacheDecryptionKey(address, key);
+    setDecryptionKey(key);
+    return key;
+  };
+
+  // Decrypt YOUR amount for one payment. decryptTransaction is sender-side (a
+  // balance delta) so it only yields the SENT amount; for RECEIVED payments we
+  // decrypt the per-tx amountPCT the sender encrypted to us
+  // (proof.publicSignals[16..22]) via the SDK's exported Poseidon helper. Both
+  // return a dollar string with the converter's decimals applied.
+  const decryptAmount = async (
+    txHash: string,
+    role: "sent" | "received",
+  ): Promise<string | null> => {
+    const key = await ensureKey();
+    try {
+      if (role === "sent") {
+        const events = await balance.decryptTransaction(txHash);
+        const transfer = events.find(
+          (e) => e.eventType === "PrivateTransfer" && e.decryptedAmount,
+        );
+        return transfer?.decryptedAmount
+          ? formatUnits(BigInt(transfer.decryptedAmount), EERC_DECIMALS)
+          : null;
+      }
+      const tx = await publicClient.getTransaction({
+        hash: txHash as `0x${string}`,
+      });
+      const { args } = decodeFunctionData({ abi: transferAbi, data: tx.input });
+      const proof = args[2] as { publicSignals: readonly bigint[] };
+      const [start, end] = RECEIVER_AMOUNT_PCT_RANGE;
+      const pct = proof.publicSignals.slice(start, end).map((x) => x.toString());
+      return formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS);
+    } catch {
+      return null;
+    }
+  };
+
+  // The encrypted memo is encrypted to both parties, so it decrypts for the
+  // sender and the receiver alike.
+  const decryptMemo = async (txHash: string): Promise<string | null> => {
+    await ensureKey();
+    try {
+      const meta = await balance.decryptMessage(txHash);
+      return meta.decryptedMessage || null;
+    } catch {
+      return null;
+    }
+  };
+
   const value: EercContextValue = {
     status: "ready",
     walletError: null,
@@ -221,6 +292,8 @@ function EercReady({
     deposit,
     send,
     isAddressRegistered,
+    decryptAmount,
+    decryptMemo,
     refetchBalance: balance.refetchBalance,
     supabaseStatus: supabaseSession.status,
     supabaseBoundWallet: supabaseSession.boundWallet,

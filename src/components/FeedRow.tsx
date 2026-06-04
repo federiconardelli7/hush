@@ -4,12 +4,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import type { FeedItem } from "@/features/payments/useFeed";
-import type { Profile } from "@/features/profile/schema";
-
-function firstName(profile: Profile | null, address: string): string {
-  if (profile?.display_name) return profile.display_name.split(" ")[0];
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
+import { displayName } from "@/lib/identity";
 
 function timeAgo(iso: string): string {
   const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -23,8 +18,8 @@ function timeAgo(iso: string): string {
 // the optional public caption.
 export function FeedRow({ item }: { item: FeedItem }) {
   const { colors } = useTheme();
-  const sender = firstName(item.sender, item.sender_address);
-  const receiver = firstName(item.receiver, item.receiver_address);
+  const sender = displayName(item.sender, item.sender_address);
+  const receiver = displayName(item.receiver, item.receiver_address);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>

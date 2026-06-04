@@ -61,4 +61,21 @@ export const paymentsRepo = {
     }
     return (data ?? []) as Payment[];
   },
+
+  // The current wallet's own payments (sent or received), newest first. RLS
+  // already exposes these rows (current_wallet() in sender/receiver); this is
+  // the precise, index-backed query for the Activity screen.
+  async mine(address: string): Promise<Payment[]> {
+    const a = address.toLowerCase();
+    const { data, error } = await supabase
+      .from("payments")
+      .select(COLUMNS)
+      .or(`sender_address.eq.${a},receiver_address.eq.${a}`)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Payment[];
+  },
 };
