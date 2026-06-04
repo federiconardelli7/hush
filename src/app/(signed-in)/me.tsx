@@ -1,4 +1,5 @@
 import { usePrivy } from "@privy-io/react-auth";
+import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
@@ -81,6 +82,11 @@ export default function Me() {
       </Text>
 
       <View style={styles.actions}>
+        <Button
+          label="Contacts"
+          variant="secondary"
+          onPress={() => router.push("/contacts")}
+        />
         <Button
           label={isDark ? "Switch to light" : "Switch to dark"}
           variant="secondary"

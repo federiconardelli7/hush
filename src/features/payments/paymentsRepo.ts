@@ -78,4 +78,23 @@ export const paymentsRepo = {
     }
     return (data ?? []) as Payment[];
   },
+
+  // Payments between two wallets (either direction), newest first — for the
+  // friend profile's "between you two" history. RLS already exposes my rows.
+  async between(a: string, b: string): Promise<Payment[]> {
+    const x = a.toLowerCase();
+    const y = b.toLowerCase();
+    const { data, error } = await supabase
+      .from("payments")
+      .select(COLUMNS)
+      .or(
+        `and(sender_address.eq.${x},receiver_address.eq.${y}),and(sender_address.eq.${y},receiver_address.eq.${x})`,
+      )
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Payment[];
+  },
 };
