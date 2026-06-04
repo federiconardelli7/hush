@@ -1,11 +1,13 @@
-import { createContext, useState, type ReactNode } from "react";
+import { createContext, useMemo, useState, type ReactNode } from "react";
 import { useEERC } from "@avalabs/eerc-sdk";
 import type { PublicClient, WalletClient } from "viem";
-import { CIRCUIT_URLS, CONTRACTS } from "@/features/eerc/config/contracts";
+import { resolveCircuitUrls } from "@/features/eerc/circuits";
+import { CONTRACTS } from "@/features/eerc/config/contracts";
 import {
   cacheDecryptionKey,
   getCachedDecryptionKey,
 } from "@/features/eerc/session";
+import { ensureFunded } from "@/features/wallet/faucet";
 import { useHushWallet } from "@/features/wallet/privyViemAdapter";
 
 export type EercStatus = "preparing" | "ready";
@@ -84,11 +86,14 @@ function EercReady({
     getCachedDecryptionKey(address),
   );
 
+  // Absolute circuit URLs (relative paths throw "Invalid base URL" in the SDK).
+  const circuitUrls = useMemo(() => resolveCircuitUrls(), []);
+
   const eerc = useEERC(
     publicClient,
     walletClient,
     CONTRACTS.encryptedERC,
-    CIRCUIT_URLS,
+    circuitUrls,
     decryptionKey,
   );
   const balance = eerc.useEncryptedBalance(CONTRACTS.erc20);
@@ -96,6 +101,8 @@ function EercReady({
   // register() internally derives + sets the key, short-circuits if already
   // registered (no tx), else sends the registration proof tx.
   const register = async () => {
+    // Drip gas to the fresh embedded wallet first — register sends a real tx.
+    await ensureFunded(publicClient, address);
     const { key } = await eerc.register();
     cacheDecryptionKey(address, key);
     setDecryptionKey(key);

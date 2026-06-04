@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getEmbeddedConnectedWallet,
+  useCreateWallet,
+  usePrivy,
   useWallets,
   type ConnectedWallet,
 } from "@privy-io/react-auth";
@@ -37,18 +39,22 @@ const FUJI_CAIP2 = `eip155:${FUJI_CHAIN_ID}`;
 
 // Bridges the Privy embedded wallet (EIP-1193) to the viem clients the eERC SDK
 // expects. The wallet client signs + sends through Privy; the public client
-// reads Fuji over plain HTTP. `getEthereumProvider()` is async, so the wallet
-// client is built in an effect keyed only on the address (a stable string) —
-// the embedded-wallet object identity is not stable across renders.
+// reads Fuji over plain HTTP.
+//
+// Note: we log in with the headless `loginWithCode` flow, and Privy's
+// `createOnLogin` only auto-creates the embedded wallet for its own modal — not
+// for headless logins. So we create the embedded wallet ourselves once the user
+// is authenticated, then build the clients in an effect keyed on the address (a
+// stable string) since the embedded-wallet object identity isn't stable.
 export function useHushWallet(): HushWallet {
-  const { wallets } = useWallets();
+  const { authenticated } = usePrivy();
+  const { wallets, ready: walletsReady } = useWallets();
+  const { createWallet } = useCreateWallet();
   const embedded = getEmbeddedConnectedWallet(wallets);
+  const address = embedded?.address as `0x${string}` | undefined;
 
-  // Keep the latest wallet in a ref so the effect can use it without depending
-  // on its unstable identity (which would re-run the effect every render).
   const walletRef = useRef<ConnectedWallet | null>(null);
   walletRef.current = embedded ?? null;
-  const address = embedded?.address as `0x${string}` | undefined;
 
   const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
   const [readyAddress, setReadyAddress] = useState<`0x${string}` | null>(null);
@@ -63,6 +69,28 @@ export function useHushWallet(): HushWallet {
     [],
   );
 
+  // Create the embedded wallet once if the authenticated user doesn't have one.
+  const creatingRef = useRef(false);
+  useEffect(() => {
+    if (!authenticated || !walletsReady || embedded || creatingRef.current) {
+      return;
+    }
+    creatingRef.current = true;
+    void (async () => {
+      try {
+        await createWallet();
+      } catch (err) {
+        creatingRef.current = false; // allow a retry on a later render
+        setError(
+          `Couldn't create your wallet: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    })();
+  }, [authenticated, walletsReady, embedded, createWallet]);
+
+  // Build the viem wallet client once the embedded wallet exists.
   useEffect(() => {
     const wallet = walletRef.current;
     if (!wallet || !address) {
