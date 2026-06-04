@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { BalanceCard } from "@/components/BalanceCard";
@@ -86,8 +87,18 @@ export default function Home() {
       ) : (
         <>
           <View style={styles.row}>
-            <Button label="Add" variant="primary" style={styles.cell} />
-            <Button label="Send" variant="secondary" style={styles.cell} />
+            <Button
+              label="Add"
+              variant="primary"
+              style={styles.cell}
+              onPress={() => router.push("/add-money")}
+            />
+            <Button
+              label="Send"
+              variant="secondary"
+              style={styles.cell}
+              onPress={() => router.push("/pay")}
+            />
           </View>
           <View style={styles.row}>
             <Button label="Request" variant="secondary" style={styles.cell} />

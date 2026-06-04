@@ -1,4 +1,5 @@
-import { parseEther, type PublicClient } from "viem";
+import { erc20Abi, parseEther, type PublicClient } from "viem";
+import { CONTRACTS } from "@/features/eerc/config/contracts";
 
 const FAUCET_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "http://localhost:8788";
 // Top up whenever the wallet is below 0.05 AVAX — matches the faucet server's
@@ -30,6 +31,43 @@ export async function ensureFunded(
   for (let i = 0; i < 20; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     if ((await publicClient.getBalance({ address })) >= MIN_GAS) {
+      return;
+    }
+  }
+}
+
+// Ensures the wallet holds at least `amount` of the test ERC20 (mints via the
+// backend if short) so a deposit has tokens to wrap. `amount` is in token units.
+export async function ensureTestBalance(
+  publicClient: PublicClient,
+  address: `0x${string}`,
+  amount: bigint,
+): Promise<void> {
+  const balanceOf = () =>
+    publicClient.readContract({
+      address: CONTRACTS.erc20 as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+    });
+
+  if ((await balanceOf()) >= amount) {
+    return;
+  }
+
+  const res = await fetch(`${FAUCET_URL}/mint-test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Test-token mint failed (${res.status}).`);
+  }
+
+  for (let i = 0; i < 20; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    if ((await balanceOf()) >= amount) {
       return;
     }
   }

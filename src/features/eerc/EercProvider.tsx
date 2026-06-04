@@ -1,13 +1,24 @@
 import { createContext, useMemo, useState, type ReactNode } from "react";
 import { useEERC } from "@avalabs/eerc-sdk";
-import type { PublicClient, WalletClient } from "viem";
+import {
+  erc20Abi,
+  formatUnits,
+  parseUnits,
+  type PublicClient,
+  type WalletClient,
+} from "viem";
+import { avalancheFuji } from "viem/chains";
 import { resolveCircuitUrls } from "@/features/eerc/circuits";
-import { CONTRACTS } from "@/features/eerc/config/contracts";
+import {
+  CONTRACTS,
+  EERC_DECIMALS,
+  ERC20_DECIMALS,
+} from "@/features/eerc/config/contracts";
 import {
   cacheDecryptionKey,
   getCachedDecryptionKey,
 } from "@/features/eerc/session";
-import { ensureFunded } from "@/features/wallet/faucet";
+import { ensureFunded, ensureTestBalance } from "@/features/wallet/faucet";
 import { useHushWallet } from "@/features/wallet/privyViemAdapter";
 import {
   useSupabaseSession,
@@ -26,10 +37,23 @@ export type EercContextValue = {
   isDecryptionKeySet: boolean;
   // Human-readable decrypted balance (decimals applied); "" until decryptable.
   parsedBalance: string;
+  // True once the key is set AND the encrypted balance is loaded — required
+  // before a transfer (the SDK errors otherwise).
+  balanceReady: boolean;
   // New users: derive key + send the on-chain registration tx.
   register: () => Promise<void>;
   // Returning users (no cached key, e.g. after reload): sign to unlock balance.
   enableDecryption: () => Promise<void>;
+  // Add money: mint test tokens if needed, approve, and wrap into the balance.
+  deposit: (humanAmount: string) => Promise<void>;
+  // Send a confidential payment with an optional encrypted memo (amount in $).
+  send: (
+    to: string,
+    humanAmount: string,
+    message?: string,
+  ) => Promise<{ transactionHash: `0x${string}` }>;
+  // Whether a recipient has registered for eERC (required before sending).
+  isAddressRegistered: (address: `0x${string}`) => Promise<boolean>;
   refetchBalance: () => void;
   // Supabase auth binding (wallet → wallet_address JWT). boundWallet is what RLS
   // sees via current_wallet() — confirms the claim round-trips.
@@ -48,8 +72,14 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
   isRegistered: false,
   isDecryptionKeySet: false,
   parsedBalance: "",
+  balanceReady: false,
   register: async () => {},
   enableDecryption: async () => {},
+  deposit: async () => {},
+  send: async () => {
+    throw new Error("Wallet not ready.");
+  },
+  isAddressRegistered: async () => false,
   refetchBalance: () => {},
   supabaseStatus: "idle",
   supabaseBoundWallet: null,
@@ -132,15 +162,65 @@ function EercReady({
     balance.refetchBalance();
   };
 
+  // Add money: ensure test tokens, approve the converter, then wrap into the
+  // encrypted balance. Amount is entered in dollars and held at the token's dp.
+  const deposit = async (humanAmount: string) => {
+    // deposit encrypts the amount to your public key, so the key must be set
+    // (cleared on reload) — derive it first if needed.
+    if (!eerc.isDecryptionKeySet) {
+      const key = await eerc.generateDecryptionKey();
+      cacheDecryptionKey(address, key);
+      setDecryptionKey(key);
+    }
+    const amount = parseUnits(humanAmount, ERC20_DECIMALS);
+    await ensureTestBalance(publicClient, address, amount);
+    const approveHash = await walletClient.writeContract({
+      address: CONTRACTS.erc20 as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [CONTRACTS.encryptedERC as `0x${string}`, amount],
+      account: address,
+      chain: avalancheFuji,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    await balance.deposit(amount);
+    balance.refetchBalance();
+  };
+
+  // privateTransfer amount is in the converter's decimals (2), unlike deposit.
+  const send = async (to: string, humanAmount: string, message?: string) => {
+    if (!eerc.isDecryptionKeySet) {
+      const key = await eerc.generateDecryptionKey();
+      cacheDecryptionKey(address, key);
+      setDecryptionKey(key);
+    }
+    const amount = parseUnits(humanAmount, EERC_DECIMALS);
+    const result = await balance.privateTransfer(to, amount, message);
+    balance.refetchBalance();
+    return { transactionHash: result.transactionHash };
+  };
+
+  const isAddressRegistered = async (recipient: `0x${string}`) => {
+    const { isRegistered } = await eerc.isAddressRegistered(recipient);
+    return isRegistered;
+  };
+
   const value: EercContextValue = {
     status: "ready",
     walletError: null,
     address,
     isRegistered: eerc.isRegistered,
     isDecryptionKeySet: eerc.isDecryptionKeySet,
-    parsedBalance: balance.parsedDecryptedBalance,
+    parsedBalance: formatUnits(balance.decryptedBalance, EERC_DECIMALS),
+    balanceReady:
+      eerc.isRegistered &&
+      eerc.isDecryptionKeySet &&
+      balance.encryptedBalance.length > 0,
     register,
     enableDecryption,
+    deposit,
+    send,
+    isAddressRegistered,
     refetchBalance: balance.refetchBalance,
     supabaseStatus: supabaseSession.status,
     supabaseBoundWallet: supabaseSession.boundWallet,

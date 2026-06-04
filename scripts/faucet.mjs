@@ -7,6 +7,7 @@ import {
   http,
   isAddress,
   parseEther,
+  parseUnits,
   verifyMessage,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -15,6 +16,7 @@ import { avalancheFuji } from "viem/chains";
 // Local dev backend for Hush. Holds server-only secrets and exposes:
 //   GET  /health      — faucet status
 //   POST /drip         — drip Fuji gas to a fresh embedded wallet
+//   POST /mint-test    — mint test ERC20 to a wallet (so it can deposit)
 //   POST /auth/nonce   — issue a single-use nonce + message to sign
 //   POST /auth/token   — verify the wallet signature, mint a Supabase JWT
 // In production these become serverless/Edge functions; the key never ships to
@@ -37,11 +39,28 @@ const SUPABASE_REF = process.env.SUPABASE_PROJECT_REF;
 const NONCE_TTL_MS = 5 * 60 * 1000;
 const TOKEN_TTL_S = 60 * 60; // 1h Supabase session
 
+// Test ERC20 (open mint) the converter wraps; minting lets a wallet deposit.
+const TEST_ERC20 = process.env.EXPO_PUBLIC_ERC20;
+const MINT_TEST = parseUnits(process.env.FAUCET_MINT_TEST ?? "100000", 18);
+const MINT_ABI = [
+  {
+    type: "function",
+    name: "mint",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+];
+
 const account = privateKeyToAccount(PK);
 const publicClient = createPublicClient({ chain: avalancheFuji, transport: http(RPC) });
 const walletClient = createWalletClient({ account, chain: avalancheFuji, transport: http(RPC) });
 
 const lastDrip = new Map(); // lowercased address -> timestamp
+const lastMint = new Map(); // lowercased address -> timestamp
 const nonces = new Map(); // nonce -> { address, message, expires }
 
 const cors = {
@@ -149,6 +168,39 @@ const server = createServer(async (req, res) => {
       send(res, 200, { ok: true, txHash: hash });
     } catch (err) {
       lastDrip.delete(key);
+      send(res, 500, { error: err instanceof Error ? err.message : String(err) });
+    }
+    return;
+  }
+
+  // Mint test ERC20 to a wallet so it has something to deposit (open mint).
+  if (req.method === "POST" && req.url === "/mint-test") {
+    if (!TEST_ERC20) {
+      send(res, 503, { error: "EXPO_PUBLIC_ERC20 not set." });
+      return;
+    }
+    const { address } = await readJson(req);
+    if (!address || !isAddress(address)) {
+      send(res, 400, { error: "Invalid address" });
+      return;
+    }
+    const key = address.toLowerCase();
+    if (Date.now() - (lastMint.get(key) ?? 0) < COOLDOWN_MS) {
+      send(res, 429, { error: "Cooldown active; try again in a few minutes." });
+      return;
+    }
+    try {
+      lastMint.set(key, Date.now());
+      const hash = await walletClient.writeContract({
+        address: TEST_ERC20,
+        abi: MINT_ABI,
+        functionName: "mint",
+        args: [address, MINT_TEST],
+      });
+      console.log(`mint TEST -> ${address}  ${hash}`);
+      send(res, 200, { ok: true, txHash: hash });
+    } catch (err) {
+      lastMint.delete(key);
       send(res, 500, { error: err instanceof Error ? err.message : String(err) });
     }
     return;

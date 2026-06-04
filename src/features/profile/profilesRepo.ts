@@ -40,6 +40,43 @@ export const profilesRepo = {
       : false;
   },
 
+  // Prefix search by @username, for the Pay recipient picker.
+  async searchByUsername(query: string): Promise<Profile[]> {
+    const q = query.trim().toLowerCase().replace(/[%_,]/g, "");
+    if (!q) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(COLUMNS)
+      .ilike("username", `${q}%`)
+      .limit(10);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Profile[];
+  },
+
+  // Resolve many addresses to profiles at once (feed name lookup).
+  async listByAddresses(addresses: string[]): Promise<Record<string, Profile>> {
+    const lower = [...new Set(addresses.map((a) => a.toLowerCase()))];
+    if (lower.length === 0) {
+      return {};
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(COLUMNS)
+      .in("address", lower);
+    if (error) {
+      throw new Error(error.message);
+    }
+    const map: Record<string, Profile> = {};
+    for (const profile of (data ?? []) as Profile[]) {
+      map[profile.address] = profile;
+    }
+    return map;
+  },
+
   async upsert(input: ProfileInput): Promise<Profile> {
     const parsed = profileInputSchema.parse(input);
     const row = {

@@ -58,6 +58,8 @@ export default function SignedInLayout() {
             <Tabs.Screen name="pay" options={{ title: "Pay" }} />
             <Tabs.Screen name="feed" options={{ title: "Feed" }} />
             <Tabs.Screen name="me" options={{ title: "Me" }} />
+            <Tabs.Screen name="add-money" options={{ href: null }} />
+            <Tabs.Screen name="pay-amount" options={{ href: null }} />
           </Tabs>
         </ProfileGate>
       </EercProvider>

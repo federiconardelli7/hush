@@ -1,0 +1,64 @@
+import { StyleSheet, Text, View } from "react-native";
+import { Avatar } from "@/design-system/primitives/Avatar";
+import { useTheme } from "@/design-system/theme";
+import { radius, spacing } from "@/design-system/tokens";
+import { fonts } from "@/design-system/typography";
+import type { FeedItem } from "@/features/payments/useFeed";
+import type { Profile } from "@/features/profile/schema";
+
+function firstName(profile: Profile | null, address: string): string {
+  if (profile?.display_name) return profile.display_name.split(" ")[0];
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+function timeAgo(iso: string): string {
+  const secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+// A feed card: who paid whom, time, the 🔒 Hidden chip (amount never shown), and
+// the optional public caption.
+export function FeedRow({ item }: { item: FeedItem }) {
+  const { colors } = useTheme();
+  const sender = firstName(item.sender, item.sender_address);
+  const receiver = firstName(item.receiver, item.receiver_address);
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={styles.row}>
+        <Avatar name={sender} size={40} />
+        <View style={styles.who}>
+          <Text style={[styles.line, { color: colors.ink }]}>
+            <Text style={styles.bold}>{sender}</Text>
+            <Text style={{ color: colors.sub }}> paid </Text>
+            <Text style={styles.bold}>{receiver}</Text>
+          </Text>
+          <Text style={[styles.time, { color: colors.sub }]}>
+            {timeAgo(item.created_at)}
+          </Text>
+        </View>
+        <View style={[styles.chip, { backgroundColor: colors.chip }]}>
+          <Text style={[styles.chipText, { color: colors.sub }]}>🔒 Hidden</Text>
+        </View>
+      </View>
+      {item.caption ? (
+        <Text style={[styles.note, { color: colors.ink }]}>{item.caption}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { borderRadius: radius.card, padding: 16, marginBottom: spacing.md },
+  row: { flexDirection: "row", alignItems: "center", gap: 13 },
+  who: { flex: 1, minWidth: 0 },
+  line: { fontFamily: fonts.ui, fontSize: 14.5 },
+  bold: { fontWeight: "700" },
+  time: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
+  chip: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  chipText: { fontFamily: fonts.ui, fontSize: 11, fontWeight: "600" },
+  note: { fontFamily: fonts.ui, fontSize: 14, marginTop: 11 },
+});

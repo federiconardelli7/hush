@@ -27,6 +27,10 @@ export const CONTRACTS = {
 // The converter eERC was deployed with 2 decimals.
 export const EERC_DECIMALS = 2;
 
+// The underlying public TEST ERC20 has 18 decimals; deposit/approve amounts are
+// expressed in these (the SDK converts to the converter's 2 dp internally).
+export const ERC20_DECIMALS = 18;
+
 // Groth16 circuit artifacts (served from public/circuits — copied from
 // eerc-deploy/zkit/artifacts; these MATCH the deployed verifiers). Shape =
 // the SDK's CircuitURLs. `deposit` needs no proof, so it has no entry.
