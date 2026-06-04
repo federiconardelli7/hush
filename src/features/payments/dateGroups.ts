@@ -43,3 +43,13 @@ export function formatTimeOfDay(iso: string): string {
     minute: "2-digit",
   });
 }
+
+// Date + time for a notification, e.g. "Jun 4, 2:14 PM".
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

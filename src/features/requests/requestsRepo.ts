@@ -24,12 +24,13 @@ export type MoneyRequest = {
   status: RequestStatus;
   tx_hash: string | null;
   decline_reason: string | null;
+  declined_at: string | null;
   note: string | null;
   created_at: string;
 };
 
 const COLUMNS =
-  "id, requester_address, requestee_address, amount_enc_requestee, amount_enc_requester, status, tx_hash, decline_reason, note, created_at";
+  "id, requester_address, requestee_address, amount_enc_requestee, amount_enc_requester, status, tx_hash, decline_reason, declined_at, note, created_at";
 
 export const requestsRepo = {
   async create(input: CreateRequestInput): Promise<MoneyRequest> {
@@ -76,12 +77,16 @@ export const requestsRepo = {
       status: RequestStatus;
       tx_hash?: string;
       decline_reason?: string;
+      declined_at?: string;
     } = { status };
     if (txHash) {
       patch.tx_hash = txHash;
     }
     if (declineReason) {
       patch.decline_reason = declineReason;
+    }
+    if (status === "declined") {
+      patch.declined_at = new Date().toISOString();
     }
     const { error } = await supabase.from("requests").update(patch).eq("id", id);
     if (error) {

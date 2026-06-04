@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { ActivityRow } from "@/components/ActivityRow";
+import { RequestRow } from "@/components/RequestRow";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
@@ -17,27 +18,47 @@ import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { groupByDate } from "@/features/payments/dateGroups";
 import { useActivity } from "@/features/payments/useActivity";
+import { useRequests } from "@/features/requests/useRequests";
 import { displayName } from "@/lib/identity";
 
-const FILTERS = ["All", "Sent", "Received", "Added/Out"] as const;
+const FILTERS = ["All", "Sent", "Received", "Added/Out", "Requests"] as const;
 
 export default function Activity() {
   const { colors } = useTheme();
   const eerc = useEerc();
   const me = eerc.address?.toLowerCase();
   const activity = useActivity(me);
+  const requests = useRequests(me);
   const [filter, setFilter] = useState(0);
   const [unlocking, setUnlocking] = useState(false);
+  const isRequests = FILTERS[filter] === "Requests";
 
-  const items = (activity.data ?? []).filter((p) => {
-    if (FILTERS[filter] === "Sent") return p.kind === "sent";
-    if (FILTERS[filter] === "Received") return p.kind === "received";
-    if (FILTERS[filter] === "Added/Out") {
-      return p.kind === "deposit" || p.kind === "withdraw";
-    }
-    return true;
-  });
+  const items = isRequests
+    ? []
+    : (activity.data ?? []).filter((p) => {
+        if (FILTERS[filter] === "Sent") return p.kind === "sent";
+        if (FILTERS[filter] === "Received") return p.kind === "received";
+        if (FILTERS[filter] === "Added/Out") {
+          return p.kind === "deposit" || p.kind === "withdraw";
+        }
+        return true;
+      });
   const groups = groupByDate(items);
+
+  // The "Requests" filter lists your money requests (incoming + outgoing), newest
+  // first — actionable via RequestRow (Pay / Decline / Cancel).
+  const requestRows = [
+    ...(requests.data?.incoming ?? []).map((r) => ({
+      key: `in:${r.id}`,
+      item: r,
+      direction: "incoming" as const,
+    })),
+    ...(requests.data?.outgoing ?? []).map((r) => ({
+      key: `out:${r.id}`,
+      item: r,
+      direction: "outgoing" as const,
+    })),
+  ].sort((a, b) => (a.item.created_at < b.item.created_at ? 1 : -1));
 
   const unlock = async () => {
     if (unlocking) return;
@@ -85,58 +106,81 @@ export default function Activity() {
         </View>
       ) : null}
 
-      <FlatList
-        data={groups}
-        keyExtractor={(g) => g.label}
-        renderItem={({ item: group }) => (
-          <View style={styles.group}>
-            <Text style={[styles.groupLabel, { color: colors.sub }]}>
-              {group.label}
+      {isRequests ? (
+        <FlatList
+          data={requestRows}
+          keyExtractor={(x) => x.key}
+          renderItem={({ item }) => (
+            <RequestRow item={item.item} direction={item.direction} />
+          )}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={requests.isFetching}
+              onRefresh={requests.refetch}
+              tintColor={colors.actBlue}
+            />
+          }
+          ListEmptyComponent={
+            <Text style={[styles.empty, { color: colors.sub }]}>
+              {requests.isLoading ? "Loading…" : "No requests yet."}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
-              {group.items.map((p, i) => (
-                <Pressable
-                  key={p.tx_hash}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/receipt",
-                      params: {
-                        txHash: p.tx_hash,
-                        kind: p.kind,
-                        name:
-                          p.kind === "deposit" || p.kind === "withdraw"
-                            ? ""
-                            : displayName(p.counterparty, p.counterpartyAddress ?? ""),
-                        address: p.counterpartyAddress ?? "",
-                        caption: p.caption ?? "",
-                        createdAt: p.created_at,
-                      },
-                    })
-                  }
-                  style={
-                    i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined
-                  }
-                >
-                  <ActivityRow item={p} />
-                </Pressable>
-              ))}
+          }
+        />
+      ) : (
+        <FlatList
+          data={groups}
+          keyExtractor={(g) => g.label}
+          renderItem={({ item: group }) => (
+            <View style={styles.group}>
+              <Text style={[styles.groupLabel, { color: colors.sub }]}>
+                {group.label}
+              </Text>
+              <View style={[styles.card, { backgroundColor: colors.card }]}>
+                {group.items.map((p, i) => (
+                  <Pressable
+                    key={p.tx_hash}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/receipt",
+                        params: {
+                          txHash: p.tx_hash,
+                          kind: p.kind,
+                          name:
+                            p.kind === "deposit" || p.kind === "withdraw"
+                              ? ""
+                              : displayName(p.counterparty, p.counterpartyAddress ?? ""),
+                          address: p.counterpartyAddress ?? "",
+                          caption: p.caption ?? "",
+                          createdAt: p.created_at,
+                        },
+                      })
+                    }
+                    style={
+                      i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined
+                    }
+                  >
+                    <ActivityRow item={p} />
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={activity.isFetching}
-            onRefresh={activity.refetch}
-            tintColor={colors.actBlue}
-          />
-        }
-        ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {activity.isLoading ? "Loading…" : "No payments yet."}
-          </Text>
-        }
-      />
+          )}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={activity.isFetching}
+              onRefresh={activity.refetch}
+              tintColor={colors.actBlue}
+            />
+          }
+          ListEmptyComponent={
+            <Text style={[styles.empty, { color: colors.sub }]}>
+              {activity.isLoading ? "Loading…" : "No payments yet."}
+            </Text>
+          }
+        />
+      )}
     </ScreenContainer>
   );
 }

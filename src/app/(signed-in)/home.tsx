@@ -8,15 +8,18 @@ import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
-import { useRequests } from "@/features/requests/useRequests";
+import { useLastSeen } from "@/features/notifications/seen";
+import { useNotifications } from "@/features/notifications/useNotifications";
 import { formatMoney } from "@/lib/money";
 
 export default function Home() {
   const { colors } = useTheme();
   const eerc = useEerc();
-  const requests = useRequests(eerc.address?.toLowerCase());
-  const pendingCount = (requests.data?.incoming ?? []).filter(
-    (r) => r.status === "pending",
+  const me = eerc.address?.toLowerCase();
+  const notifications = useNotifications(me);
+  const lastSeen = useLastSeen(me);
+  const unread = (notifications.data ?? []).filter(
+    (n) => new Date(n.created_at).getTime() > lastSeen,
   ).length;
   const [busy, setBusy] = useState<"register" | "unlock" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +55,9 @@ export default function Home() {
   return (
     <ScreenContainer>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/requests")} style={styles.bell}>
+        <Pressable onPress={() => router.push("/notifications")} style={styles.bell}>
           <Text style={styles.bellIcon}>🔔</Text>
-          {pendingCount > 0 ? (
+          {unread > 0 ? (
             <View
               style={[
                 styles.dot,
