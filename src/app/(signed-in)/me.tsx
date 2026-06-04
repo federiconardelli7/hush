@@ -10,7 +10,21 @@ import { useEerc } from "@/features/eerc/useEerc";
 export default function Me() {
   const { colors, isDark, toggle } = useTheme();
   const { logout } = usePrivy();
-  const { address } = useEerc();
+  const { address, supabaseStatus, supabaseBoundWallet, supabaseError } = useEerc();
+
+  const bound =
+    supabaseStatus === "ready" &&
+    supabaseBoundWallet === address?.toLowerCase();
+  const supabaseLine =
+    supabaseStatus === "signing"
+      ? "Binding…"
+      : supabaseStatus === "error"
+        ? (supabaseError ?? "Binding failed")
+        : supabaseStatus === "ready"
+          ? bound
+            ? `Bound ✓ — RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
+            : `Bound, but RLS sees ${supabaseBoundWallet ?? "nothing"}`
+          : "—";
 
   return (
     <ScreenContainer>
@@ -29,6 +43,25 @@ export default function Me() {
           {address ?? "Preparing…"}
         </Text>
       </View>
+
+      <Text style={[styles.label, styles.spacer, { color: colors.sub }]}>
+        Database (Supabase)
+      </Text>
+      <Text
+        style={[
+          styles.addr,
+          {
+            color:
+              supabaseStatus === "error"
+                ? colors.avRed
+                : bound
+                  ? colors.positive
+                  : colors.sub,
+          },
+        ]}
+      >
+        {supabaseLine}
+      </Text>
 
       <View style={styles.actions}>
         <Button
@@ -51,6 +84,7 @@ export default function Me() {
 const styles = StyleSheet.create({
   title: { marginBottom: spacing.xl },
   label: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600", marginBottom: spacing.xs },
+  spacer: { marginTop: spacing.lg },
   addrBox: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,

@@ -9,6 +9,10 @@ import {
 } from "@/features/eerc/session";
 import { ensureFunded } from "@/features/wallet/faucet";
 import { useHushWallet } from "@/features/wallet/privyViemAdapter";
+import {
+  useSupabaseSession,
+  type SupabaseStatus,
+} from "@/features/supabase/useSupabaseSession";
 
 export type EercStatus = "preparing" | "ready";
 
@@ -27,6 +31,11 @@ export type EercContextValue = {
   // Returning users (no cached key, e.g. after reload): sign to unlock balance.
   enableDecryption: () => Promise<void>;
   refetchBalance: () => void;
+  // Supabase auth binding (wallet → wallet_address JWT). boundWallet is what RLS
+  // sees via current_wallet() — confirms the claim round-trips.
+  supabaseStatus: SupabaseStatus;
+  supabaseBoundWallet: string | null;
+  supabaseError: string | null;
 };
 
 const EercContext = createContext<EercContextValue | null>(null);
@@ -42,6 +51,9 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
   register: async () => {},
   enableDecryption: async () => {},
   refetchBalance: () => {},
+  supabaseStatus: "idle",
+  supabaseBoundWallet: null,
+  supabaseError: null,
 });
 
 // Outer gate: useEERC requires concrete viem clients, so the inner component
@@ -98,6 +110,9 @@ function EercReady({
   );
   const balance = eerc.useEncryptedBalance(CONTRACTS.erc20);
 
+  // Bind this wallet to Supabase (wallet → wallet_address JWT) once it's ready.
+  const supabaseSession = useSupabaseSession(walletClient, address);
+
   // register() internally derives + sets the key, short-circuits if already
   // registered (no tx), else sends the registration proof tx.
   const register = async () => {
@@ -127,6 +142,9 @@ function EercReady({
     register,
     enableDecryption,
     refetchBalance: balance.refetchBalance,
+    supabaseStatus: supabaseSession.status,
+    supabaseBoundWallet: supabaseSession.boundWallet,
+    supabaseError: supabaseSession.error,
   };
 
   return <EercContext.Provider value={value}>{children}</EercContext.Provider>;
