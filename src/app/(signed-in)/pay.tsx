@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,6 +24,8 @@ export default function Pay() {
   const { colors } = useTheme();
   const { address } = useEerc();
   const me = address?.toLowerCase();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isRequest = mode === "request";
   const contacts = useContacts(me);
   const nickByAddr = new Map(
     (contacts.data ?? []).map((c) => [c.contact_address, c.nickname]),
@@ -57,14 +59,19 @@ export default function Pay() {
   }, [query]);
 
   const goAmount = (to: string, name: string) =>
-    router.push({ pathname: "/pay-amount", params: { to, name } });
+    router.push({
+      pathname: isRequest ? "/request-amount" : "/pay-amount",
+      params: { to, name },
+    });
 
   const trimmed = query.trim();
   const pasteAddress = isAddress(trimmed) ? trimmed : null;
 
   return (
     <ScreenContainer>
-      <Text style={[typeScale.screenTitle, { color: colors.ink }]}>Pay</Text>
+      <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
+        {isRequest ? "Request" : "Pay"}
+      </Text>
       <TextInput
         value={query}
         onChangeText={setQuery}
@@ -106,7 +113,8 @@ export default function Pay() {
             >
               <Avatar name="0 x" size={40} />
               <Text style={[styles.name, { color: colors.ink, flex: 1 }]} numberOfLines={1}>
-                Pay {pasteAddress.slice(0, 10)}…{pasteAddress.slice(-6)}
+                {isRequest ? "Request from" : "Pay"} {pasteAddress.slice(0, 10)}…
+                {pasteAddress.slice(-6)}
               </Text>
             </Pressable>
           ) : null}

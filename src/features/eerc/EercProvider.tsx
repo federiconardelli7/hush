@@ -1,5 +1,5 @@
 import { createContext, useMemo, useState, type ReactNode } from "react";
-import { Poseidon, useEERC } from "@avalabs/eerc-sdk";
+import { EERC, Poseidon, useEERC } from "@avalabs/eerc-sdk";
 import {
   decodeFunctionData,
   erc20Abi,
@@ -71,6 +71,10 @@ export type EercContextValue = {
   ) => Promise<string | null>;
   // Decrypt the end-to-end encrypted memo (sender & receiver only).
   decryptMemo: (txHash: string) => Promise<string | null>;
+  // Encrypt an amount to a recipient's eERC pubkey (money requests) — 7-element PCT.
+  encryptAmountFor: (toAddress: string, humanAmount: string) => Promise<string[]>;
+  // Decrypt a request-amount PCT addressed to me (dollars string).
+  decryptRequestAmount: (pct: string[]) => Promise<string | null>;
   refetchBalance: () => void;
   // Supabase auth binding (wallet → wallet_address JWT). boundWallet is what RLS
   // sees via current_wallet() — confirms the claim round-trips.
@@ -104,6 +108,10 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
   isAddressRegistered: async () => false,
   decryptAmount: async () => null,
   decryptMemo: async () => null,
+  encryptAmountFor: async () => {
+    throw new Error("Wallet not ready.");
+  },
+  decryptRequestAmount: async () => null,
   refetchBalance: () => {},
   supabaseStatus: "idle",
   supabaseBoundWallet: null,
@@ -163,6 +171,22 @@ function EercReady({
     decryptionKey,
   );
   const balance = eerc.useEncryptedBalance(CONTRACTS.erc20);
+
+  // A lightweight EERC instance for client-side crypto only (encrypt an amount to a
+  // recipient's pubkey, fetch pubkeys). Its constructor just sets up curve/field/
+  // poseidon (no fetching), and the useEERC hook doesn't expose these.
+  const cryptoErc = useMemo(
+    () =>
+      new EERC(
+        publicClient,
+        walletClient,
+        CONTRACTS.encryptedERC as `0x${string}`,
+        CONTRACTS.registrar as `0x${string}`,
+        true,
+        circuitUrls,
+      ),
+    [publicClient, walletClient, circuitUrls],
+  );
 
   // Bind this wallet to Supabase (wallet → wallet_address JWT) once it's ready.
   const supabaseSession = useSupabaseSession(walletClient, address);
@@ -326,6 +350,39 @@ function EercReady({
     }
   };
 
+  // Encrypt an amount to a recipient's eERC public key → a 7-element Poseidon PCT
+  // (same format as the transfer amountPCT). Money requests use this so the amount
+  // is readable only by the two parties — it never touches the DB in plaintext.
+  const encryptAmountFor = async (
+    toAddress: string,
+    humanAmount: string,
+  ): Promise<string[]> => {
+    const pubkey = await cryptoErc.fetchPublicKey(toAddress as `0x${string}`);
+    if (pubkey[0] === 0n && pubkey[1] === 0n) {
+      throw new Error("That address hasn't joined Hush yet.");
+    }
+    const amount = parseUnits(humanAmount, EERC_DECIMALS);
+    const enc = await cryptoErc.poseidon.processPoseidonEncryption({
+      inputs: [amount],
+      publicKey: pubkey,
+    });
+    return [...enc.cipher, enc.authKey[0], enc.authKey[1], enc.nonce].map((x) =>
+      x.toString(),
+    );
+  };
+
+  // Decrypt a request-amount PCT addressed to me (dollars), behind the key gate.
+  const decryptRequestAmount = async (
+    pct: string[],
+  ): Promise<string | null> => {
+    const key = await ensureKey();
+    try {
+      return formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS);
+    } catch {
+      return null;
+    }
+  };
+
   const value: EercContextValue = {
     status: "ready",
     walletError: null,
@@ -345,6 +402,8 @@ function EercReady({
     isAddressRegistered,
     decryptAmount,
     decryptMemo,
+    encryptAmountFor,
+    decryptRequestAmount,
     refetchBalance: balance.refetchBalance,
     supabaseStatus: supabaseSession.status,
     supabaseBoundWallet: supabaseSession.boundWallet,

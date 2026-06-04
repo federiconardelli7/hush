@@ -66,6 +66,8 @@ export default function SignedInLayout() {
             <Tabs.Screen name="add-contact" options={{ href: null }} />
             <Tabs.Screen name="contact" options={{ href: null }} />
             <Tabs.Screen name="receipt" options={{ href: null }} />
+            <Tabs.Screen name="request-amount" options={{ href: null }} />
+            <Tabs.Screen name="requests" options={{ href: null }} />
           </Tabs>
         </ProfileGate>
       </EercProvider>

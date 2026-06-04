@@ -10,6 +10,7 @@ import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { AUDIENCES, paymentsRepo, type Audience } from "@/features/payments/paymentsRepo";
+import { requestsRepo } from "@/features/requests/requestsRepo";
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
   friends: "Friends",
@@ -19,11 +20,17 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
 
 export default function PayAmount() {
   const { colors } = useTheme();
-  const { to, name } = useLocalSearchParams<{ to: string; name?: string }>();
+  const { to, name, requestId, amount: amountParam } = useLocalSearchParams<{
+    to: string;
+    name?: string;
+    requestId?: string;
+    amount?: string;
+  }>();
+  const prefill = typeof amountParam === "string" ? amountParam : "";
   const { address, send, isAddressRegistered, parsedBalance, balanceReady } =
     useEerc();
   const queryClient = useQueryClient();
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(prefill);
   const [memo, setMemo] = useState("");
   const [audience, setAudience] = useState<Audience>("friends");
   const [busy, setBusy] = useState(false);
@@ -35,11 +42,11 @@ export default function PayAmount() {
   useFocusEffect(
     useCallback(() => {
       setDoneTx(null);
-      setAmount("");
+      setAmount(prefill);
       setMemo("");
       setError(null);
       setBusy(false);
-    }, []),
+    }, [prefill]),
   );
 
   const value = Number(amount || "0");
@@ -65,6 +72,10 @@ export default function PayAmount() {
       }
       await queryClient.invalidateQueries({ queryKey: ["feed"] });
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
+      if (requestId) {
+        await requestsRepo.setStatus(requestId, "fulfilled", transactionHash);
+        await queryClient.invalidateQueries({ queryKey: ["requests"] });
+      }
       setDoneTx(transactionHash);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send the payment.");

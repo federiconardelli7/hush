@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { BalanceCard } from "@/components/BalanceCard";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
@@ -8,11 +8,16 @@ import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
+import { useRequests } from "@/features/requests/useRequests";
 import { formatMoney } from "@/lib/money";
 
 export default function Home() {
   const { colors } = useTheme();
   const eerc = useEerc();
+  const requests = useRequests(eerc.address?.toLowerCase());
+  const pendingCount = (requests.data?.incoming ?? []).filter(
+    (r) => r.status === "pending",
+  ).length;
   const [busy, setBusy] = useState<"register" | "unlock" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +51,19 @@ export default function Home() {
 
   return (
     <ScreenContainer>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.push("/requests")} style={styles.bell}>
+          <Text style={styles.bellIcon}>🔔</Text>
+          {pendingCount > 0 ? (
+            <View
+              style={[
+                styles.dot,
+                { backgroundColor: colors.actBlue, borderColor: colors.bg },
+              ]}
+            />
+          ) : null}
+        </Pressable>
+      </View>
       <BalanceCard
         balance={balanceUnlocked ? formatMoney(eerc.parsedBalance) : "••••"}
       />
@@ -91,7 +109,14 @@ export default function Home() {
             />
           </View>
           <View style={styles.row}>
-            <Button label="Request" variant="secondary" style={styles.cell} />
+            <Button
+              label="Request"
+              variant="secondary"
+              style={styles.cell}
+              onPress={() =>
+                router.push({ pathname: "/pay", params: { mode: "request" } })
+              }
+            />
             <Button
               label="Cash out"
               variant="secondary"
@@ -110,6 +135,18 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  topBar: { flexDirection: "row", justifyContent: "flex-end", marginBottom: spacing.sm },
+  bell: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  bellIcon: { fontSize: 22 },
+  dot: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+  },
   center: {
     flex: 1,
     alignItems: "center",
