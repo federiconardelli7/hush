@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useTheme } from "@/design-system/theme";
 import { EercProvider } from "@/features/eerc/EercProvider";
+import { ProfileGate } from "@/features/profile/ProfileGate";
 
 const TAB_ICON: Record<string, string> = {
   home: "🏠",
@@ -15,7 +16,8 @@ const TAB_ICON: Record<string, string> = {
 
 // Authenticated shell: guard on Privy auth, then mount the eERC provider (which
 // only initialises once the embedded wallet is ready) and the bottom tabs. The
-// error boundary surfaces any eERC SDK render error instead of white-screening.
+// error boundary surfaces any eERC SDK render error instead of white-screening;
+// ProfileGate blocks the tabs until the wallet has a Supabase profile.
 export default function SignedInLayout() {
   const { ready, authenticated } = usePrivy();
   const { colors } = useTheme();
@@ -34,28 +36,30 @@ export default function SignedInLayout() {
   return (
     <ErrorBoundary>
       <EercProvider>
-        <Tabs
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            tabBarActiveTintColor: colors.actBlue,
-            tabBarInactiveTintColor: colors.sub,
-            tabBarStyle: {
-              backgroundColor: colors.card,
-              borderTopColor: colors.line,
-            },
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 18, color }}>
-                {TAB_ICON[route.name] ?? "•"}
-              </Text>
-            ),
-          })}
-        >
-          <Tabs.Screen name="home" options={{ title: "Home" }} />
-          <Tabs.Screen name="activity" options={{ title: "Activity" }} />
-          <Tabs.Screen name="pay" options={{ title: "Pay" }} />
-          <Tabs.Screen name="feed" options={{ title: "Feed" }} />
-          <Tabs.Screen name="me" options={{ title: "Me" }} />
-        </Tabs>
+        <ProfileGate>
+          <Tabs
+            screenOptions={({ route }) => ({
+              headerShown: false,
+              tabBarActiveTintColor: colors.actBlue,
+              tabBarInactiveTintColor: colors.sub,
+              tabBarStyle: {
+                backgroundColor: colors.card,
+                borderTopColor: colors.line,
+              },
+              tabBarIcon: ({ color }) => (
+                <Text style={{ fontSize: 18, color }}>
+                  {TAB_ICON[route.name] ?? "•"}
+                </Text>
+              ),
+            })}
+          >
+            <Tabs.Screen name="home" options={{ title: "Home" }} />
+            <Tabs.Screen name="activity" options={{ title: "Activity" }} />
+            <Tabs.Screen name="pay" options={{ title: "Pay" }} />
+            <Tabs.Screen name="feed" options={{ title: "Feed" }} />
+            <Tabs.Screen name="me" options={{ title: "Me" }} />
+          </Tabs>
+        </ProfileGate>
       </EercProvider>
     </ErrorBoundary>
   );
