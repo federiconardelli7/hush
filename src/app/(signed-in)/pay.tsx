@@ -84,6 +84,17 @@ export default function Pay() {
           { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
         ]}
       />
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: "/scan",
+            params: { intent: "pay", mode: isRequest ? "request" : "pay" },
+          })
+        }
+        style={styles.scan}
+      >
+        <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+      </Pressable>
 
       {trimmed.length === 0 ? (
         <FlatList
@@ -161,6 +172,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   spinner: { marginTop: spacing.md },
+  scan: { alignSelf: "flex-start", paddingVertical: spacing.sm, marginTop: spacing.xs },
+  scanText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   section: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600", marginTop: spacing.md, marginBottom: spacing.xs },
   list: { paddingTop: spacing.md, gap: spacing.sm },
   item: {

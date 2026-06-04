@@ -93,6 +93,7 @@ export default function Me() {
             onPress={() => router.push("/edit-profile")}
             first
           />
+          <Row icon="🔳" label="My QR code" onPress={() => router.push("/my-code")} />
           <Row
             icon="🔒"
             label="Privacy & security"

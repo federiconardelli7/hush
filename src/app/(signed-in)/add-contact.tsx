@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +21,7 @@ import { fonts } from "@/design-system/typography";
 import { contactsRepo } from "@/features/contacts/contactsRepo";
 import { useEerc } from "@/features/eerc/useEerc";
 import { profilesRepo } from "@/features/profile/profilesRepo";
+import { parseScannedCode } from "@/features/qr/code";
 import type { Profile } from "@/features/profile/schema";
 
 type Target = { address: string; profile: Profile | null };
@@ -34,6 +35,7 @@ export default function AddContact() {
   const { address, isAddressRegistered } = useEerc();
   const me = address?.toLowerCase();
   const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ address?: string }>();
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
@@ -43,6 +45,7 @@ export default function AddContact() {
   const [nickname, setNickname] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoPicked = useRef(false);
 
   useEffect(() => {
     if (target) return;
@@ -94,6 +97,20 @@ export default function AddContact() {
     }
   };
 
+  // Scan-to-add: when /scan hands back an address param, run the same pick() the
+  // search/paste paths use (registration check included). Runs once.
+  useEffect(() => {
+    if (autoPicked.current || target || !me) {
+      return;
+    }
+    const addr = parseScannedCode(params.address ?? "");
+    if (!addr) {
+      return;
+    }
+    autoPicked.current = true;
+    void pick(addr, null);
+  }, [params.address, target, me]);
+
   const save = async () => {
     if (!me || !target || !nickname.trim() || busy) return;
     setBusy(true);
@@ -131,6 +148,12 @@ export default function AddContact() {
               { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
             ]}
           />
+          <Pressable
+            onPress={() => router.push({ pathname: "/scan", params: { intent: "add" } })}
+            style={styles.scan}
+          >
+            <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+          </Pressable>
 
           {pasteAddress ? (
             <Pressable
@@ -237,6 +260,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   spinner: { marginTop: spacing.md },
+  scan: { alignSelf: "flex-start", paddingVertical: spacing.sm, marginTop: spacing.xs },
+  scanText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   list: { paddingTop: spacing.md, gap: spacing.sm },
   item: {
     flexDirection: "row",
