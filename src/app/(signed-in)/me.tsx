@@ -1,6 +1,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
@@ -10,6 +11,41 @@ import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
 
+function Row({
+  icon,
+  label,
+  sub,
+  right,
+  onPress,
+  first,
+}: {
+  icon: string;
+  label: string;
+  sub?: string;
+  right?: ReactNode;
+  onPress?: () => void;
+  first?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.row, first ? null : { borderTopWidth: 1, borderTopColor: colors.line }]}
+    >
+      <Text style={styles.rowIcon}>{icon}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.rowLabel, { color: colors.ink }]}>{label}</Text>
+        {sub ? (
+          <Text style={[styles.rowSub, { color: colors.sub }]} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      {right ?? <Text style={[styles.chev, { color: colors.sub }]}>›</Text>}
+    </Pressable>
+  );
+}
+
 export default function Me() {
   const { colors, isDark, toggle } = useTheme();
   const { logout } = usePrivy();
@@ -17,111 +53,105 @@ export default function Me() {
   const profile = useProfile(address ?? null);
 
   const bound =
-    supabaseStatus === "ready" &&
-    supabaseBoundWallet === address?.toLowerCase();
-  const supabaseLine =
+    supabaseStatus === "ready" && supabaseBoundWallet === address?.toLowerCase();
+  const dbLine =
     supabaseStatus === "signing"
       ? "Binding…"
       : supabaseStatus === "error"
         ? (supabaseError ?? "Binding failed")
-        : supabaseStatus === "ready"
-          ? bound
-            ? `Bound ✓ — RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
-            : `Bound, but RLS sees ${supabaseBoundWallet ?? "nothing"}`
-          : "—";
+        : bound
+          ? `Database bound ✓ · RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
+          : "Database: connecting…";
 
   return (
     <ScreenContainer>
       <Text style={[typeScale.screenTitle, styles.title, { color: colors.ink }]}>
         Me
       </Text>
-
-      {profile.data ? (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.profileRow}>
-          <Avatar name={profile.data.display_name} size={52} />
-          <View>
-            <Text style={[styles.pName, { color: colors.ink }]}>
-              {profile.data.display_name}
+          <Avatar name={profile.data?.display_name ?? "Hush"} size={56} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.pName, { color: colors.ink }]} numberOfLines={1}>
+              {profile.data?.display_name ?? "Your profile"}
             </Text>
-            <Text style={[styles.pHandle, { color: colors.sub }]}>
-              @{profile.data.username}
+            {profile.data ? (
+              <Text style={[styles.pHandle, { color: colors.sub }]}>
+                @{profile.data.username}
+              </Text>
+            ) : null}
+            <Text style={[styles.pAddr, { color: colors.sub }]} numberOfLines={1} selectable>
+              {address ?? "Preparing…"}
             </Text>
           </View>
         </View>
-      ) : null}
 
-      <Text style={[styles.label, { color: colors.sub }]}>Your address</Text>
-      <View
-        style={[
-          styles.addrBox,
-          { backgroundColor: colors.card, borderColor: colors.line },
-        ]}
-      >
-        <Text style={[styles.addr, { color: colors.ink }]} selectable>
-          {address ?? "Preparing…"}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Row
+            icon="👤"
+            label="Edit profile"
+            onPress={() => router.push("/edit-profile")}
+            first
+          />
+          <Row
+            icon="🔒"
+            label="Privacy & security"
+            onPress={() => router.push("/privacy")}
+          />
+          <Row icon="👥" label="Contacts" onPress={() => router.push("/contacts")} />
+          <Row
+            icon={isDark ? "🌙" : "☀️"}
+            label="Appearance"
+            sub={isDark ? "Dark" : "Light"}
+            onPress={toggle}
+            right={
+              <Text style={[styles.chev, { color: colors.actBlue }]}>
+                {isDark ? "Light" : "Dark"}
+              </Text>
+            }
+          />
+        </View>
+
+        <Text
+          style={[
+            styles.dbLine,
+            { color: supabaseStatus === "error" ? colors.avRed : bound ? colors.positive : colors.sub },
+          ]}
+        >
+          {dbLine}
         </Text>
-      </View>
 
-      <Text style={[styles.label, styles.spacer, { color: colors.sub }]}>
-        Database (Supabase)
-      </Text>
-      <Text
-        style={[
-          styles.addr,
-          {
-            color:
-              supabaseStatus === "error"
-                ? colors.avRed
-                : bound
-                  ? colors.positive
-                  : colors.sub,
-          },
-        ]}
-      >
-        {supabaseLine}
-      </Text>
-
-      <View style={styles.actions}>
-        <Button
-          label="Contacts"
-          variant="secondary"
-          onPress={() => router.push("/contacts")}
-        />
-        <Button
-          label={isDark ? "Switch to light" : "Switch to dark"}
-          variant="secondary"
-          onPress={toggle}
-        />
         <Button
           label="Sign out"
           variant="ghost"
           onPress={() => {
             void logout();
           }}
+          style={styles.signout}
         />
-      </View>
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { marginBottom: spacing.lg },
+  title: { marginBottom: spacing.md },
+  scroll: { paddingBottom: spacing.xl },
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   pName: { fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
-  pHandle: { fontFamily: fonts.mono, fontSize: 13 },
-  label: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600", marginBottom: spacing.xs },
-  spacer: { marginTop: spacing.lg },
-  addrBox: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.input,
-    borderWidth: 1,
-  },
-  addr: { fontFamily: fonts.mono, fontSize: 13 },
-  actions: { gap: spacing.sm, marginTop: spacing.xl },
+  pHandle: { fontFamily: fonts.mono, fontSize: 13, marginTop: 1 },
+  pAddr: { fontFamily: fonts.mono, fontSize: 11.5, marginTop: 4 },
+  card: { borderRadius: radius.card, paddingHorizontal: 16 },
+  row: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 14 },
+  rowIcon: { fontSize: 18, width: 22, textAlign: "center" },
+  rowLabel: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "500" },
+  rowSub: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
+  chev: { fontFamily: fonts.ui, fontSize: 16, fontWeight: "600" },
+  dbLine: { fontFamily: fonts.ui, fontSize: 11.5, marginTop: spacing.lg, textAlign: "center" },
+  signout: { marginTop: spacing.md },
 });
