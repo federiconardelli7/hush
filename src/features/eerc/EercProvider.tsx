@@ -18,6 +18,8 @@ import {
 import {
   RECEIVER_AMOUNT_PCT_RANGE,
   transferAbi,
+  WITHDRAW_AMOUNT_SIGNAL,
+  withdrawAbi,
 } from "@/features/eerc/transferAbi";
 import {
   cacheDecryptionKey,
@@ -50,7 +52,9 @@ export type EercContextValue = {
   // Returning users (no cached key, e.g. after reload): sign to unlock balance.
   enableDecryption: () => Promise<void>;
   // Add money: mint test tokens if needed, approve, and wrap into the balance.
-  deposit: (humanAmount: string) => Promise<void>;
+  deposit: (humanAmount: string) => Promise<{ transactionHash: `0x${string}` }>;
+  // Cash out: exit the encrypted balance back to the underlying token (amount in $).
+  withdraw: (humanAmount: string) => Promise<{ transactionHash: `0x${string}` }>;
   // Send a confidential payment with an optional encrypted memo (amount in $).
   send: (
     to: string,
@@ -63,7 +67,7 @@ export type EercContextValue = {
   // sender balance delta; received → the per-tx amountPCT. null if undecryptable.
   decryptAmount: (
     txHash: string,
-    role: "sent" | "received",
+    role: "sent" | "received" | "deposit" | "withdraw",
   ) => Promise<string | null>;
   // Decrypt the end-to-end encrypted memo (sender & receiver only).
   decryptMemo: (txHash: string) => Promise<string | null>;
@@ -88,7 +92,12 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
   balanceReady: false,
   register: async () => {},
   enableDecryption: async () => {},
-  deposit: async () => {},
+  deposit: async () => {
+    throw new Error("Wallet not ready.");
+  },
+  withdraw: async () => {
+    throw new Error("Wallet not ready.");
+  },
   send: async () => {
     throw new Error("Wallet not ready.");
   },
@@ -198,8 +207,24 @@ function EercReady({
       chain: avalancheFuji,
     });
     await publicClient.waitForTransactionReceipt({ hash: approveHash });
-    await balance.deposit(amount);
+    const result = await balance.deposit(amount);
     balance.refetchBalance();
+    return { transactionHash: result.transactionHash };
+  };
+
+  // Cash out: exit the encrypted balance back to the underlying token. Amount is
+  // in the converter's 2 dp (like send, NOT deposit's 18) — withdraw subtracts it
+  // from the decrypted balance. Needs the key + a loaded balance (gated by the UI).
+  const withdraw = async (humanAmount: string) => {
+    if (!eerc.isDecryptionKeySet) {
+      const key = await eerc.generateDecryptionKey();
+      cacheDecryptionKey(address, key);
+      setDecryptionKey(key);
+    }
+    const amount = parseUnits(humanAmount, EERC_DECIMALS);
+    const result = await balance.withdraw(amount);
+    balance.refetchBalance();
+    return { transactionHash: result.transactionHash };
   };
 
   // privateTransfer amount is in the converter's decimals (2), unlike deposit.
@@ -238,27 +263,52 @@ function EercReady({
   // return a dollar string with the converter's decimals applied.
   const decryptAmount = async (
     txHash: string,
-    role: "sent" | "received",
+    role: "sent" | "received" | "deposit" | "withdraw",
   ): Promise<string | null> => {
     const key = await ensureKey();
     try {
+      // received & withdraw amounts are public signals in the tx calldata — the
+      // SDK's decryptTransaction doesn't surface them correctly (received: N/A;
+      // withdraw: it returns args[0], which is the tokenId, not the amount).
+      if (role === "received" || role === "withdraw") {
+        const tx = await publicClient.getTransaction({
+          hash: txHash as `0x${string}`,
+        });
+        if (role === "withdraw") {
+          // withdraw amount = proof.publicSignals[0] (converter's 2 dp).
+          const { args } = decodeFunctionData({
+            abi: withdrawAbi,
+            data: tx.input,
+          });
+          const proof = args[1] as { publicSignals: readonly bigint[] };
+          return formatUnits(
+            proof.publicSignals[WITHDRAW_AMOUNT_SIGNAL],
+            EERC_DECIMALS,
+          );
+        }
+        // received: the sender encrypts the amount to us as a per-tx amountPCT
+        // in the transfer calldata (proof.publicSignals[16..22]).
+        const { args } = decodeFunctionData({ abi: transferAbi, data: tx.input });
+        const proof = args[2] as { publicSignals: readonly bigint[] };
+        const [start, end] = RECEIVER_AMOUNT_PCT_RANGE;
+        const pct = proof.publicSignals
+          .slice(start, end)
+          .map((x) => x.toString());
+        return formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS);
+      }
+      // sent & deposit come from decryptTransaction.
+      const events = await balance.decryptTransaction(txHash);
       if (role === "sent") {
-        const events = await balance.decryptTransaction(txHash);
-        const transfer = events.find(
-          (e) => e.eventType === "PrivateTransfer" && e.decryptedAmount,
+        const e = events.find(
+          (x) => x.eventType === "PrivateTransfer" && x.decryptedAmount,
         );
-        return transfer?.decryptedAmount
-          ? formatUnits(BigInt(transfer.decryptedAmount), EERC_DECIMALS)
+        return e?.decryptedAmount
+          ? formatUnits(BigInt(e.decryptedAmount), EERC_DECIMALS)
           : null;
       }
-      const tx = await publicClient.getTransaction({
-        hash: txHash as `0x${string}`,
-      });
-      const { args } = decodeFunctionData({ abi: transferAbi, data: tx.input });
-      const proof = args[2] as { publicSignals: readonly bigint[] };
-      const [start, end] = RECEIVER_AMOUNT_PCT_RANGE;
-      const pct = proof.publicSignals.slice(start, end).map((x) => x.toString());
-      return formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS);
+      // deposit: the public token amount is the Deposit event's amount (args[0], 18 dp).
+      const e = events.find((x) => x.eventType === "Deposit" && x.amount);
+      return e?.amount ? formatUnits(BigInt(e.amount), ERC20_DECIMALS) : null;
     } catch {
       return null;
     }
@@ -290,6 +340,7 @@ function EercReady({
     register,
     enableDecryption,
     deposit,
+    withdraw,
     send,
     isAddressRegistered,
     decryptAmount,

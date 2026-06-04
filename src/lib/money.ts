@@ -10,13 +10,12 @@ export function formatMoney(parsed: string): string {
   })}`;
 }
 
-// Signed amount for an Activity row: "+ $24.00" (received) / "− $610.00" (sent).
+// Signed amount for an Activity row: "+ $24.00" (money in) / "− $610.00" (money out).
 // null = not decryptable → "$—".
 export function formatSignedMoney(
   parsed: string | null,
-  direction: "sent" | "received",
+  positive: boolean,
 ): string {
   if (parsed === null) return "$—";
-  const sign = direction === "received" ? "+ " : "− ";
-  return `${sign}${formatMoney(parsed)}`;
+  return `${positive ? "+ " : "− "}${formatMoney(parsed)}`;
 }

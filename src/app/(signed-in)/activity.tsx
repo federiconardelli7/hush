@@ -17,7 +17,7 @@ import { useEerc } from "@/features/eerc/useEerc";
 import { groupByDate } from "@/features/payments/dateGroups";
 import { useActivity } from "@/features/payments/useActivity";
 
-const FILTERS = ["All", "Sent", "Received"] as const;
+const FILTERS = ["All", "Sent", "Received", "Added/Out"] as const;
 
 export default function Activity() {
   const { colors } = useTheme();
@@ -28,8 +28,11 @@ export default function Activity() {
   const [unlocking, setUnlocking] = useState(false);
 
   const items = (activity.data ?? []).filter((p) => {
-    if (FILTERS[filter] === "Sent") return p.direction === "sent";
-    if (FILTERS[filter] === "Received") return p.direction === "received";
+    if (FILTERS[filter] === "Sent") return p.kind === "sent";
+    if (FILTERS[filter] === "Received") return p.kind === "received";
+    if (FILTERS[filter] === "Added/Out") {
+      return p.kind === "deposit" || p.kind === "withdraw";
+    }
     return true;
   });
   const groups = groupByDate(items);
@@ -121,7 +124,7 @@ export default function Activity() {
 }
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: "row", gap: spacing.sm, marginVertical: spacing.md },
+  segment: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginVertical: spacing.md },
   seg: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: radius.pill },
   segText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
   unlock: {

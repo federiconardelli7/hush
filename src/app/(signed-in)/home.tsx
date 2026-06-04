@@ -92,7 +92,12 @@ export default function Home() {
           </View>
           <View style={styles.row}>
             <Button label="Request" variant="secondary" style={styles.cell} />
-            <Button label="Cash out" variant="secondary" style={styles.cell} />
+            <Button
+              label="Cash out"
+              variant="secondary"
+              style={styles.cell}
+              onPress={() => router.push("/cash-out")}
+            />
           </View>
         </>
       )}

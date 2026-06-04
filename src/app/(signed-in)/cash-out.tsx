@@ -10,42 +10,53 @@ import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
+import { formatMoney } from "@/lib/money";
 
-const PRESETS = ["50", "100", "500", "1000"];
-const presetLabel = (v: string) => (v === "1000" ? "$1k" : `$${v}`);
-
-export default function AddMoney() {
+export default function CashOut() {
   const { colors } = useTheme();
-  const { deposit, address } = useEerc();
+  const { withdraw, parsedBalance, balanceReady, address } = useEerc();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const available = Number(parsedBalance || "0");
   const value = Number(amount || "0");
-  const canAdd = value > 0 && !busy;
+  const overBalance = value > available;
+  const canCashOut = value > 0 && !overBalance && balanceReady && !busy;
+  const presets = ["50", "100", "500"].filter((v) => Number(v) <= available);
 
-  const onAdd = async () => {
-    if (!canAdd) return;
+  const onCashOut = async () => {
+    if (!canCashOut) return;
     setBusy(true);
     setError(null);
     try {
-      const { transactionHash } = await deposit(amount);
+      const { transactionHash } = await withdraw(amount);
       if (address) {
         await accountEventsRepo.record({
           tx_hash: transactionHash,
           address,
-          kind: "deposit",
+          kind: "withdraw",
         });
       }
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
       router.back();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't add money.");
+      setError(err instanceof Error ? err.message : "Couldn't cash out.");
     } finally {
       setBusy(false);
     }
   };
+
+  const label = busy
+    ? "Cashing out…"
+    : !balanceReady
+      ? "Loading your balance…"
+      : overBalance
+        ? "Not enough balance"
+        : value > 0
+          ? `Cash out $${amount}`
+          : "Enter an amount";
 
   return (
     <ScreenContainer>
@@ -56,22 +67,36 @@ export default function AddMoney() {
         >
           <Text style={[styles.chev, { color: colors.ink }]}>‹</Text>
         </Pressable>
-        <Text style={[styles.title, { color: colors.ink }]}>Add money</Text>
+        <Text style={[styles.title, { color: colors.ink }]}>Cash out</Text>
         <View style={styles.iconBtn} />
       </View>
 
       <View style={styles.amountWrap}>
-        <Text style={[typeScale.balanceHero, styles.amount, { color: colors.ink }]}>
+        <Text
+          style={[
+            typeScale.balanceHero,
+            styles.amount,
+            { color: overBalance ? colors.avRed : colors.ink },
+          ]}
+        >
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
           {amount || "0"}
         </Text>
         <Text style={[styles.caption, { color: colors.sub }]}>
-          Wrapped into your private balance. Amounts stay encrypted.
+          Available {formatMoney(parsedBalance)}
         </Text>
       </View>
 
       <View style={styles.presets}>
-        {PRESETS.map((v) => {
+        {balanceReady && available > 0 ? (
+          <Pressable
+            onPress={() => setAmount(parsedBalance)}
+            style={[styles.chip, { backgroundColor: colors.chip }]}
+          >
+            <Text style={[styles.chipText, { color: colors.sub }]}>Max</Text>
+          </Pressable>
+        ) : null}
+        {presets.map((v) => {
           const selected = amount === v;
           return (
             <Pressable
@@ -85,7 +110,7 @@ export default function AddMoney() {
               <Text
                 style={[styles.chipText, { color: selected ? colors.bg : colors.sub }]}
               >
-                {presetLabel(v)}
+                ${v}
               </Text>
             </Pressable>
           );
@@ -94,11 +119,11 @@ export default function AddMoney() {
 
       <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
         <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-          <Text style={{ fontSize: 17 }}>🧪</Text>
+          <Text style={{ fontSize: 17 }}>🏦</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.methodSub, { color: colors.sub }]}>Funding · test tokens</Text>
-          <Text style={[styles.methodMain, { color: colors.ink }]}>Fuji testnet</Text>
+          <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · test tokens</Text>
+          <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
         </View>
       </View>
 
@@ -110,9 +135,9 @@ export default function AddMoney() {
         <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
       ) : null}
       <Button
-        label={busy ? "Adding…" : value > 0 ? `Add $${amount}` : "Add money"}
+        label={label}
         variant="primary"
-        onPress={onAdd}
+        onPress={onCashOut}
         style={styles.cta}
       />
     </ScreenContainer>

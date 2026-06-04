@@ -1,29 +1,61 @@
 import { useQuery } from "@tanstack/react-query";
+import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
 import { paymentsRepo } from "@/features/payments/paymentsRepo";
-import type { FeedItem } from "@/features/payments/useFeed";
 import { profilesRepo } from "@/features/profile/profilesRepo";
+import type { Profile } from "@/features/profile/schema";
 
-export type PaymentDirection = "sent" | "received";
-export type ActivityItem = FeedItem & { direction: PaymentDirection };
+export type ActivityKind = "sent" | "received" | "deposit" | "withdraw";
 
-// The current wallet's own payment history (sent + received), with profiles
-// joined for names. Amounts are NOT fetched here — each row decrypts its own
-// amount on-chain (see ActivityRow). Mirrors useFeed.
+// A unified row in the user's money history. Transfers carry a counterparty +
+// caption; deposit/withdraw carry neither. Amounts are NOT fetched here — each
+// row decrypts its own on-chain (see ActivityRow).
+export type ActivityEntry = {
+  tx_hash: string;
+  created_at: string;
+  kind: ActivityKind;
+  counterparty: Profile | null;
+  counterpartyAddress: string | null;
+  caption: string | null;
+};
+
 export function useActivity(me: string | undefined) {
   return useQuery({
     queryKey: ["activity", me],
     enabled: Boolean(me),
-    queryFn: async (): Promise<ActivityItem[]> => {
-      const payments = await paymentsRepo.mine(me!);
+    queryFn: async (): Promise<ActivityEntry[]> => {
+      const [payments, events] = await Promise.all([
+        paymentsRepo.mine(me!),
+        accountEventsRepo.mine(me!),
+      ]);
       const profiles = await profilesRepo.listByAddresses(
         payments.flatMap((p) => [p.sender_address, p.receiver_address]),
       );
-      return payments.map((p) => ({
-        ...p,
-        sender: profiles[p.sender_address] ?? null,
-        receiver: profiles[p.receiver_address] ?? null,
-        direction: p.sender_address === me ? "sent" : "received",
+
+      const transfers: ActivityEntry[] = payments.map((p) => {
+        const sent = p.sender_address === me;
+        const counterpartyAddress = sent ? p.receiver_address : p.sender_address;
+        return {
+          tx_hash: p.tx_hash,
+          created_at: p.created_at,
+          kind: sent ? "sent" : "received",
+          counterparty: profiles[counterpartyAddress] ?? null,
+          counterpartyAddress,
+          caption: p.caption,
+        };
+      });
+
+      const cash: ActivityEntry[] = events.map((e) => ({
+        tx_hash: e.tx_hash,
+        created_at: e.created_at,
+        kind: e.kind,
+        counterparty: null,
+        counterpartyAddress: null,
+        caption: null,
       }));
+
+      return [...transfers, ...cash].sort((a, b) =>
+        a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+      );
     },
   });
 }

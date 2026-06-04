@@ -1,38 +1,51 @@
-// Minimal ABI for the eERC converter's `transfer`, used to decode a RECEIVED
-// transfer's calldata and recover the receiver's amount ciphertext.
+// Minimal ABIs for decoding eERC tx calldata to recover amounts that the SDK's
+// decryptTransaction doesn't surface correctly.
 //
-// Every transfer encrypts the amount to the receiver as a per-transaction
-// Poseidon ciphertext (`amountPCT`, 7 field elements). It is carried in the
-// proof's public signals at indices 16..22 — verified against the deployed
-// transfer circuit (EncryptedERC.sol: `transferInputs.amountPCT[i] = input[16+i]`,
-// 32 public signals). Decoding the calldata gives an immutable, per-tx source
-// (on-chain storage `amountPCTs[]` is cleared on the receiver's next send).
+// - transfer: the receiver's amount is encrypted to them as a per-tx amountPCT
+//   (Poseidon ciphertext) carried in proof.publicSignals[16..22] — verified
+//   against the deployed transfer circuit (EncryptedERC.sol:1151, 32 signals).
+// - withdraw: the (public) amount is proof.publicSignals[0] (EncryptedERC.sol:1052,
+//   16 signals). The SDK's decryptTransaction returns args[0], which is the
+//   tokenId, NOT the amount — so we decode the calldata ourselves.
 //
-// IMPORTANT: this offset is bound to the deployed transfer circuit. Re-check it
+// IMPORTANT: these offsets/sizes are bound to the deployed circuits. Re-check them
 // if the converter/circuits are ever redeployed (see ARCHITECTURE.md F-12).
 export const RECEIVER_AMOUNT_PCT_RANGE = [16, 23] as const;
+export const WITHDRAW_AMOUNT_SIGNAL = 0;
 
-const proofComponent = {
+const proofPoints = {
+  name: "proofPoints",
+  type: "tuple",
+  internalType: "struct ProofPoints",
+  components: [
+    { name: "a", type: "uint256[2]", internalType: "uint256[2]" },
+    { name: "b", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+    { name: "c", type: "uint256[2]", internalType: "uint256[2]" },
+  ],
+} as const;
+
+const transferProof = {
   name: "proof",
   type: "tuple",
   internalType: "struct TransferProof",
   components: [
-    {
-      name: "proofPoints",
-      type: "tuple",
-      internalType: "struct ProofPoints",
-      components: [
-        { name: "a", type: "uint256[2]", internalType: "uint256[2]" },
-        { name: "b", type: "uint256[2][2]", internalType: "uint256[2][2]" },
-        { name: "c", type: "uint256[2]", internalType: "uint256[2]" },
-      ],
-    },
+    proofPoints,
     { name: "publicSignals", type: "uint256[32]", internalType: "uint256[32]" },
   ],
 } as const;
 
-// Both overloads (with and without the encrypted memo `message`). Hush sends use
-// the `message` variant; decodeFunctionData resolves the right one by selector.
+const withdrawProof = {
+  name: "proof",
+  type: "tuple",
+  internalType: "struct WithdrawProof",
+  components: [
+    proofPoints,
+    { name: "publicSignals", type: "uint256[16]", internalType: "uint256[16]" },
+  ],
+} as const;
+
+// Both overloads (with and without the encrypted memo `message`); decodeFunctionData
+// resolves the right one by selector.
 export const transferAbi = [
   {
     type: "function",
@@ -42,7 +55,7 @@ export const transferAbi = [
     inputs: [
       { name: "to", type: "address", internalType: "address" },
       { name: "tokenId", type: "uint256", internalType: "uint256" },
-      proofComponent,
+      transferProof,
       { name: "balancePCT", type: "uint256[7]", internalType: "uint256[7]" },
     ],
   },
@@ -54,7 +67,33 @@ export const transferAbi = [
     inputs: [
       { name: "to", type: "address", internalType: "address" },
       { name: "tokenId", type: "uint256", internalType: "uint256" },
-      proofComponent,
+      transferProof,
+      { name: "balancePCT", type: "uint256[7]", internalType: "uint256[7]" },
+      { name: "message", type: "bytes", internalType: "bytes" },
+    ],
+  },
+] as const;
+
+export const withdrawAbi = [
+  {
+    type: "function",
+    name: "withdraw",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      { name: "tokenId", type: "uint256", internalType: "uint256" },
+      withdrawProof,
+      { name: "balancePCT", type: "uint256[7]", internalType: "uint256[7]" },
+    ],
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      { name: "tokenId", type: "uint256", internalType: "uint256" },
+      withdrawProof,
       { name: "balancePCT", type: "uint256[7]", internalType: "uint256[7]" },
       { name: "message", type: "bytes", internalType: "bytes" },
     ],
