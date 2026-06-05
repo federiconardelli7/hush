@@ -54,6 +54,12 @@ export const radius = {
   pill: 999,
 } as const;
 
+export const layout = {
+  wide: 900, // ≥ this viewport width (px) → desktop: left sidebar + centered content
+  sidebar: 236,
+  content: 720,
+} as const;
+
 export const shadow = {
   card: { shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 14, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   buttonBlue: { shadowColor: palette.actBlue, shadowOpacity: 0.34, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
