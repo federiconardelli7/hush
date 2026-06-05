@@ -33,6 +33,22 @@ export const dark = {
 
 export type ThemeColors = Record<keyof typeof light, string>;
 
+// Intentionally FIXED (not theme-flipping): these sit on always-dark surfaces, so
+// they must NOT vary by light/dark. Do not confuse with the theme `colors` above.
+
+// White-opacity values used on Home's fixed-dark (#16161B) balance card + tiles.
+export const onDarkCard = {
+  label: "rgba(255,255,255,0.7)", // "Total balance" caption text
+  pill: "rgba(255,255,255,0.12)", // "Private" pill background
+  ghost: "rgba(255,255,255,0.10)", // ghost action tile background
+  caption: "rgba(255,255,255,0.85)", // action tile label text
+} as const;
+
+// Fixed tint for the receipt "Private · Completed" chip background.
+export const tint = {
+  blue: "rgba(37,99,235,0.10)",
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

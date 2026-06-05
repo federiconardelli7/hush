@@ -94,16 +94,19 @@ export function NotificationRow({
     <Text style={[styles.time, { color: colors.sub }]}>{formatDateTime(item.created_at)}</Text>
   );
   if (item.kind === "request") {
-    const amountText = !eerc.isDecryptionKeySet
-      ? "🔒"
-      : amount.isPending
-        ? "···"
-        : amount.data == null
-          ? "—"
-          : formatMoney(amount.data);
+    const locked = !eerc.isDecryptionKeySet;
+    const amountText = amount.isPending
+      ? "···"
+      : amount.data == null
+        ? "—"
+        : formatMoney(amount.data);
     right = (
       <View style={styles.rightCol}>
-        <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+        {locked ? (
+          <Feather name="lock" size={15} color={colors.sub} />
+        ) : (
+          <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+        )}
         {eerc.isDecryptionKeySet && amount.data != null ? (
           <Pressable onPress={pay}>
             <Text style={[styles.pay, { backgroundColor: colors.actBlue }]}>Pay</Text>

@@ -64,7 +64,7 @@ export default function Me() {
       : supabaseStatus === "error"
         ? (supabaseError ?? "Binding failed")
         : bound
-          ? `Database bound ✓ · RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
+          ? `Database bound · RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
           : "Database: connecting…";
 
   const settings = (

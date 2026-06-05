@@ -206,9 +206,12 @@ export default function AddContact() {
                   {shorten(target.address)}
                 </Text>
               )}
-              <Text style={[styles.valid, { color: colors.positive }]}>
-                ✓ Valid Hush account
-              </Text>
+              <View style={styles.validRow}>
+                <Feather name="check" size={13} color={colors.positive} />
+                <Text style={[styles.valid, { color: colors.positive }]}>
+                  Valid Hush account
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -224,9 +227,12 @@ export default function AddContact() {
               { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
             ]}
           />
-          <Text style={[styles.note, { color: colors.sub }]}>
-            🔒 The address is never shown in your feed — only this name.
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: spacing.sm }}>
+            <Feather name="lock" size={12} color={colors.sub} />
+            <Text style={[styles.note, { color: colors.sub }]}>
+              The address is never shown in your feed — only this name.
+            </Text>
+          </View>
 
           <Button
             label={busy ? "Saving…" : "Save contact"}
@@ -293,14 +299,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: spacing.md,
   },
-  valid: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600", marginTop: 2 },
+  validRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+  valid: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   label: {
     fontFamily: fonts.ui,
     fontSize: 12.5,
     fontWeight: "600",
     marginTop: spacing.lg,
   },
-  note: { fontFamily: fonts.ui, fontSize: 12, marginTop: spacing.sm, lineHeight: 18 },
+  note: { fontFamily: fonts.ui, fontSize: 12, lineHeight: 18 },
   save: { marginTop: spacing.lg },
   again: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600", textAlign: "center", marginTop: spacing.md },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginTop: spacing.md },

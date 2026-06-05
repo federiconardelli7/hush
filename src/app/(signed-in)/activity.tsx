@@ -103,6 +103,10 @@ export default function Activity() {
     setShowDate(false);
   };
 
+  const noPaymentsCopy = search.trim()
+    ? "No payments match your search."
+    : "No payments in this range.";
+
   const q = search.trim().toLowerCase();
   const matchesSearch = (p: ActivityEntry): boolean => {
     if (!q) return true;
@@ -212,9 +216,11 @@ export default function Activity() {
           onPress={() => setShowDate((s) => !s)}
           style={[styles.datePill, { backgroundColor: colors.chip }]}
         >
+          <Feather name="calendar" size={13} color={colors.ink} />
           <Text style={[styles.datePillText, { color: colors.ink }]}>
-            🗓  {RANGE_LABEL[range]}  ▾
+            {RANGE_LABEL[range]}
           </Text>
+          <Feather name="chevron-down" size={14} color={colors.sub} />
         </Pressable>
       </View>
 
@@ -294,7 +300,7 @@ export default function Activity() {
             : "No requests in this range."
           : activity.isLoading
             ? "Loading…"
-            : "No payments in this range."}
+            : noPaymentsCopy}
       </Text>
     );
     const desktopBody = (
@@ -316,6 +322,7 @@ export default function Activity() {
             <View style={[styles.tableHead, { borderBottomColor: colors.line }]}>
               <Text style={[styles.tableHeadCell, styles.colWho, { color: colors.sub }]}>Who</Text>
               <Text style={[styles.tableHeadCell, styles.colNote, { color: colors.sub }]}>Note</Text>
+              <Text style={[styles.tableHeadCell, styles.colDate, { color: colors.sub }]}>Date</Text>
               <Text style={[styles.tableHeadCell, styles.colAmount, { color: colors.sub }]}>Amount</Text>
             </View>
             {items.map((p, i) => (
@@ -449,7 +456,7 @@ export default function Activity() {
           }
           ListEmptyComponent={
             <Text style={[styles.empty, { color: colors.sub }]}>
-              {activity.isLoading ? "Loading…" : "No payments in this range."}
+              {activity.isLoading ? "Loading…" : noPaymentsCopy}
             </Text>
           }
         />
@@ -479,6 +486,7 @@ const styles = StyleSheet.create({
   datePill: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
     paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: radius.pill,
@@ -547,6 +555,7 @@ const styles = StyleSheet.create({
   },
   colWho: { flexBasis: ACTIVITY_COLS.who, flexGrow: 0, flexShrink: 0 },
   colNote: { flex: 1 },
+  colDate: { flexBasis: ACTIVITY_COLS.date, flexGrow: 0, flexShrink: 0 },
   colAmount: { flexBasis: ACTIVITY_COLS.amount, flexGrow: 0, flexShrink: 0, textAlign: "right" },
   tableRow: { paddingHorizontal: 22 },
   deskList: { gap: spacing.sm },

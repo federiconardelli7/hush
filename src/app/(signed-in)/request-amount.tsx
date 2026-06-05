@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
@@ -78,13 +79,16 @@ export default function RequestAmount() {
       return (
         <DesktopScreen title="Request" center maxWidth={460}>
           <View style={styles.successWrap}>
-            <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
+            <Feather name="check" size={56} color={colors.positive} />
             <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
               Requested from {name ?? "them"}
             </Text>
-            <Text style={[styles.successSub, { color: colors.sub }]}>
-              🔒 The amount is encrypted — only you two can read it.
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+              <Feather name="lock" size={14} color={colors.sub} />
+              <Text style={[styles.successSub, { color: colors.sub }]}>
+                The amount is encrypted — only you two can read it.
+              </Text>
+            </View>
             <Button
               label="Done"
               variant="primary"
@@ -98,13 +102,16 @@ export default function RequestAmount() {
     return (
       <ScreenContainer maxWidth={460}>
         <View style={styles.successWrap}>
-          <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
+          <Feather name="check" size={56} color={colors.positive} />
           <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
             Requested from {name ?? "them"}
           </Text>
-          <Text style={[styles.successSub, { color: colors.sub }]}>
-            🔒 The amount is encrypted — only you two can read it.
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+            <Feather name="lock" size={14} color={colors.sub} />
+            <Text style={[styles.successSub, { color: colors.sub }]}>
+              The amount is encrypted — only you two can read it.
+            </Text>
+          </View>
           <Button
             label="Done"
             variant="primary"
@@ -219,6 +226,5 @@ const styles = StyleSheet.create({
   successCta: { alignSelf: "stretch", marginTop: spacing.lg },
   footnote: { fontFamily: fonts.ui, fontSize: 12, textAlign: "center", paddingVertical: spacing.md },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
-  check: { fontSize: 56, fontWeight: "800" },
   successSub: { fontFamily: fonts.ui, fontSize: 14, textAlign: "center", maxWidth: 280 },
 });

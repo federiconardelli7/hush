@@ -97,13 +97,16 @@ export default function PayAmount() {
       return (
         <DesktopScreen title="Pay" center maxWidth={460}>
           <View style={styles.successWrap}>
-            <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
+            <Feather name="check" size={56} color={colors.positive} />
             <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
               Sent to {name ?? "them"}
             </Text>
-            <Text style={[styles.successSub, { color: colors.sub }]}>
-              🔒 Only you two can see the amount.
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+              <Feather name="lock" size={14} color={colors.sub} />
+              <Text style={[styles.successSub, { color: colors.sub }]}>
+                Only you two can see the amount.
+              </Text>
+            </View>
             <Text style={[styles.tx, { color: colors.sub }]} selectable>
               {doneTx.slice(0, 20)}…
             </Text>
@@ -115,13 +118,16 @@ export default function PayAmount() {
     return (
       <ScreenContainer maxWidth={460}>
         <View style={styles.successWrap}>
-          <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
+          <Feather name="check" size={56} color={colors.positive} />
           <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
             Sent to {name ?? "them"}
           </Text>
-          <Text style={[styles.successSub, { color: colors.sub }]}>
-            🔒 Only you two can see the amount.
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+            <Feather name="lock" size={14} color={colors.sub} />
+            <Text style={[styles.successSub, { color: colors.sub }]}>
+              Only you two can see the amount.
+            </Text>
+          </View>
           <Text style={[styles.tx, { color: colors.sub }]} selectable>
             {doneTx.slice(0, 20)}…
           </Text>
@@ -332,7 +338,6 @@ const styles = StyleSheet.create({
   successCta: { alignSelf: "stretch", marginTop: spacing.lg },
   footnote: { fontFamily: fonts.ui, fontSize: 12, textAlign: "center", paddingVertical: spacing.md },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
-  check: { fontSize: 56, fontWeight: "800" },
   successSub: { fontFamily: fonts.ui, fontSize: 14, textAlign: "center" },
   tx: { fontFamily: fonts.mono, fontSize: 12 },
 });

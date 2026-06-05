@@ -8,7 +8,7 @@ import { DesktopScreen } from "@/components/DesktopScreen";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
-import { radius, shadow, spacing } from "@/design-system/tokens";
+import { onDarkCard, radius, shadow, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
 import { useEerc } from "@/features/eerc/useEerc";
@@ -94,7 +94,8 @@ export default function Home() {
             <View style={styles.balanceTopRow}>
               <Text style={styles.balanceLabel}>Total balance</Text>
               <View style={styles.privatePill}>
-                <Text style={styles.privatePillText}>🔒 Private</Text>
+                <Feather name="lock" size={11} color="#fff" />
+                <Text style={styles.privatePillText}>Private</Text>
               </View>
             </View>
             <Text style={styles.balanceValue}>{formatMoney(eerc.parsedBalance)}</Text>
@@ -164,7 +165,7 @@ export default function Home() {
     <ScreenContainer>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.push("/notifications")} style={styles.bell}>
-          <Text style={styles.bellIcon}>🔔</Text>
+          <Feather name="bell" size={22} color={colors.ink} />
           {unread > 0 ? (
             <View
               style={[
@@ -250,7 +251,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   topBar: { flexDirection: "row", justifyContent: "flex-end", marginBottom: spacing.sm },
   bell: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  bellIcon: { fontSize: 22 },
   dot: {
     position: "absolute",
     top: 6,
@@ -290,13 +290,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.ui,
     fontSize: 13.5,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.7)",
+    color: onDarkCard.label,
   },
   privatePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: onDarkCard.pill,
   },
   privatePillText: {
     fontFamily: fonts.ui,
@@ -320,12 +323,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tileGhost: { backgroundColor: "rgba(255,255,255,0.10)" },
+  tileGhost: { backgroundColor: onDarkCard.ghost },
   tileCaption: {
     fontFamily: fonts.ui,
     fontSize: 11.5,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
+    color: onDarkCard.caption,
     marginTop: 6,
     textAlign: "center",
   },

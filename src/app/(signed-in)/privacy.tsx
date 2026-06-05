@@ -1,3 +1,5 @@
+import Feather from "@expo/vector-icons/Feather";
+import type { ComponentProps } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
@@ -8,25 +10,27 @@ import { useEerc } from "@/features/eerc/useEerc";
 
 // Honest, read-only explanation of Hush's actual privacy model — no toggles
 // (nothing here is user-configurable yet), no claims the protocol doesn't back.
-const ITEMS: { icon: string; title: string; body: string; badge?: string }[] = [
+type FeatherName = ComponentProps<typeof Feather>["name"];
+
+const ITEMS: { icon: FeatherName; title: string; body: string; badge?: string }[] = [
   {
-    icon: "🔒",
+    icon: "lock",
     title: "Encrypted amounts",
     body: "Every payment amount and your balance are encrypted on-chain. Only you — and the people you transact with — can decrypt them.",
     badge: "Always on",
   },
   {
-    icon: "👥",
+    icon: "users",
     title: "What's public",
     body: "Who paid whom is public — that's what makes the social feed work. The amounts and balances are never revealed.",
   },
   {
-    icon: "✉️",
+    icon: "mail",
     title: "Memos & requests",
     body: "Payment notes and money-request amounts are end-to-end encrypted to the two parties — the server can't read them.",
   },
   {
-    icon: "🛡️",
+    icon: "shield",
     title: "Compliance auditor",
     body: "The eERC network has an auditor that can view amounts for oversight. On this testnet, that's the app deployer.",
   },
@@ -48,7 +52,7 @@ export default function Privacy() {
             style={[styles.card, { backgroundColor: colors.card, borderColor: colors.line }]}
           >
             <View style={styles.cardHead}>
-              <Text style={styles.icon}>{it.icon}</Text>
+              <Feather name={it.icon} size={18} color={colors.ink} />
               <Text style={[styles.title, { color: colors.ink }]}>{it.title}</Text>
               {it.badge ? (
                 <View style={[styles.badge, { backgroundColor: "rgba(31,157,99,0.14)" }]}>
@@ -79,7 +83,6 @@ const styles = StyleSheet.create({
   list: { paddingTop: spacing.sm, paddingBottom: spacing.xl, gap: spacing.md },
   card: { borderRadius: radius.card, borderWidth: 1, padding: 16 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 9 },
-  icon: { fontSize: 18 },
   title: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "700", flex: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
   badgeText: { fontFamily: fonts.ui, fontSize: 11.5, fontWeight: "700" },

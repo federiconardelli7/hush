@@ -15,6 +15,13 @@ import { displayName } from "@/lib/identity";
 
 const SCOPES = ["Friends", "Public", "You"] as const;
 
+// Scope-aware empty-state copy (reads naturally per filter, not a raw label).
+const EMPTY_BY_SCOPE: Record<(typeof SCOPES)[number], string> = {
+  Friends: "No payments from friends yet.",
+  Public: "No public payments yet.",
+  You: "No payments involving you yet.",
+};
+
 export default function Feed() {
   const { colors } = useTheme();
   const isWide = useIsWide();
@@ -89,7 +96,7 @@ export default function Feed() {
         {segment}
         {items.length === 0 ? (
           <Text style={[styles.empty, { color: colors.sub }]}>
-            {feed.isLoading ? "Loading…" : "No payments yet."}
+            {feed.isLoading ? "Loading…" : EMPTY_BY_SCOPE[SCOPES[scope]]}
           </Text>
         ) : (
           items.map((item) => <View key={item.tx_hash}>{renderRow(item)}</View>)
@@ -160,7 +167,7 @@ export default function Feed() {
         }
         ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.sub }]}>
-            {feed.isLoading ? "Loading…" : "No payments yet."}
+            {feed.isLoading ? "Loading…" : EMPTY_BY_SCOPE[SCOPES[scope]]}
           </Text>
         }
       />

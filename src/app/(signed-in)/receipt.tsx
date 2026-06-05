@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -8,7 +9,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
-import { radius, spacing } from "@/design-system/tokens";
+import { radius, spacing, tint } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { CONTRACTS } from "@/features/eerc/config/contracts";
 import { transferAbi } from "@/features/eerc/transferAbi";
@@ -89,9 +90,9 @@ export default function Receipt() {
     },
   });
 
+  const isLocked = !eerc.isDecryptionKeySet;
   let amountText: string;
-  if (!eerc.isDecryptionKeySet) amountText = "🔒";
-  else if (amount.isPending) amountText = "···";
+  if (amount.isPending) amountText = "···";
   else if (amount.data == null) amountText = "—";
   else amountText = formatSignedMoney(amount.data, positive);
   const amountColor =
@@ -125,11 +126,16 @@ export default function Receipt() {
         <View style={styles.head}>
           <Avatar name={name || "0 x"} size={62} />
           <Text style={[styles.title, { color: colors.sub }]}>{titleLine(kind, name)}</Text>
-          <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+          {isLocked ? (
+            <Feather name="lock" size={32} color={amountColor} style={styles.amountLock} />
+          ) : (
+            <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+          )}
           {isTransfer ? (
-            <View style={[styles.chip, { backgroundColor: "rgba(37,99,235,0.10)" }]}>
+            <View style={[styles.chip, { backgroundColor: tint.blue }]}>
+              <Feather name="lock" size={12} color={colors.actBlue} />
               <Text style={[styles.chipText, { color: colors.actBlue }]}>
-                🔒 Private · Completed
+                Private · Completed
               </Text>
             </View>
           ) : null}
@@ -167,9 +173,12 @@ export default function Receipt() {
         {isTransfer ? (
           <View style={[styles.proofCard, { backgroundColor: colors.chip }]}>
             <Pressable style={styles.proofHead} onPress={() => setShowProof((s) => !s)}>
-              <Text style={[styles.proofTitle, { color: colors.ink }]}>
-                🛡 Amount encrypted on-chain
-              </Text>
+              <View style={styles.proofTitleRow}>
+                <Feather name="shield" size={13} color={colors.actBlue} />
+                <Text style={[styles.proofTitle, { color: colors.ink }]}>
+                  Amount encrypted on-chain
+                </Text>
+              </View>
               <Text style={[styles.proofToggle, { color: colors.actBlue }]}>
                 {showProof ? "Hide proof" : "View proof"}
               </Text>
@@ -223,7 +232,16 @@ const styles = StyleSheet.create({
   head: { alignItems: "center", marginTop: spacing.lg, gap: 6 },
   title: { fontFamily: fonts.ui, fontSize: 14, marginTop: 6 },
   amount: { fontFamily: fonts.display, fontSize: 40, fontWeight: "800" },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, marginTop: 4 },
+  amountLock: { marginVertical: 4 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    marginTop: 4,
+  },
   chipText: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   card: {
     borderRadius: radius.card,
@@ -243,6 +261,7 @@ const styles = StyleSheet.create({
   mono: { fontFamily: fonts.mono, fontSize: 12.5 },
   proofCard: { borderRadius: radius.card, padding: 16, marginTop: spacing.md, marginBottom: spacing.xl },
   proofHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  proofTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
   proofTitle: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600", flexShrink: 1 },
   proofToggle: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   proofBody: { marginTop: spacing.md, gap: 6 },

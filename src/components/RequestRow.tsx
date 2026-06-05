@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -15,7 +16,7 @@ import { formatMoney } from "@/lib/money";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending",
-  fulfilled: "Paid ✓",
+  fulfilled: "Paid",
   declined: "Declined",
   canceled: "Canceled",
 };
@@ -49,9 +50,9 @@ export function RequestRow({
     queryFn: () => eerc.decryptRequestAmount(pct),
   });
 
+  const locked = !eerc.isDecryptionKeySet;
   let amountText: string;
-  if (!eerc.isDecryptionKeySet) amountText = "🔒";
-  else if (amount.isPending) amountText = "···";
+  if (amount.isPending) amountText = "···";
   else if (amount.data == null) amountText = "—";
   else amountText = formatMoney(amount.data);
 
@@ -111,7 +112,11 @@ export function RequestRow({
             {statusText}
           </Text>
         </View>
-        <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+        {locked ? (
+          <Feather name="lock" size={16} color={colors.sub} />
+        ) : (
+          <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+        )}
       </View>
 
       {pending && !confirming ? (

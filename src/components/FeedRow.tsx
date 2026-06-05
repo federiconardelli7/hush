@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { useTheme } from "@/design-system/theme";
@@ -14,7 +15,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-// A feed card: who paid whom, time, the 🔒 Hidden chip (amount never shown), and
+// A feed card: who paid whom, time, the lock "Hidden" chip (amount never shown), and
 // the optional public caption.
 export function FeedRow({ item }: { item: FeedItem }) {
   const { colors } = useTheme();
@@ -36,7 +37,8 @@ export function FeedRow({ item }: { item: FeedItem }) {
           </Text>
         </View>
         <View style={[styles.chip, { backgroundColor: colors.chip }]}>
-          <Text style={[styles.chipText, { color: colors.sub }]}>🔒 Hidden</Text>
+          <Feather name="lock" size={11} color={colors.sub} />
+          <Text style={[styles.chipText, { color: colors.sub }]}>Hidden</Text>
         </View>
       </View>
       {item.caption ? (
@@ -53,7 +55,14 @@ const styles = StyleSheet.create({
   line: { fontFamily: fonts.ui, fontSize: 14.5 },
   bold: { fontWeight: "700" },
   time: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
-  chip: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
   chipText: { fontFamily: fonts.ui, fontSize: 11, fontWeight: "600" },
   note: { fontFamily: fonts.ui, fontSize: 14, marginTop: 11 },
 });

@@ -1,6 +1,7 @@
+import Feather from "@expo/vector-icons/Feather";
 import { usePrivy } from "@privy-io/react-auth";
 import { Redirect, Tabs } from "expo-router";
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Sidebar } from "@/components/Sidebar";
 import { useTheme } from "@/design-system/theme";
@@ -8,12 +9,12 @@ import { layout } from "@/design-system/tokens";
 import { EercProvider } from "@/features/eerc/EercProvider";
 import { ProfileGate } from "@/features/profile/ProfileGate";
 
-const TAB_ICON: Record<string, string> = {
-  home: "🏠",
-  activity: "🧾",
-  pay: "➕",
-  feed: "👥",
-  me: "👤",
+const TAB_ICON: Record<string, keyof typeof Feather.glyphMap> = {
+  home: "home",
+  activity: "activity",
+  pay: "plus-circle",
+  feed: "globe",
+  me: "user",
 };
 
 // Authenticated shell: guard on Privy auth, then mount the eERC provider (which only
@@ -54,7 +55,7 @@ export default function SignedInLayout() {
                     ? { display: "none" }
                     : { backgroundColor: colors.card, borderTopColor: colors.line },
                   tabBarIcon: ({ color }) => (
-                    <Text style={{ fontSize: 18, color }}>{TAB_ICON[route.name] ?? "•"}</Text>
+                    <Feather name={TAB_ICON[route.name] ?? "circle"} size={22} color={color} />
                   ),
                 })}
               >

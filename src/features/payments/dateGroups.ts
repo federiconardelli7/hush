@@ -8,6 +8,15 @@ function startOfDay(t: number): number {
   return d.getTime();
 }
 
+// Relative day label for a timestamp: "Today" / "Yesterday" / null (older), using
+// the same day-boundary logic as groupByDate. Pure — `now` is injectable.
+function dayLabel(t: number, now: number = Date.now()): "Today" | "Yesterday" | null {
+  const today = startOfDay(now);
+  if (t >= today) return "Today";
+  if (t >= today - DAY) return "Yesterday";
+  return null;
+}
+
 // Bucket payment-like items (assumed newest-first) into Today / Yesterday /
 // This week / Earlier by created_at. Input order is preserved within a bucket,
 // and empty buckets are dropped. Pure — `now` is injectable for tests.
@@ -42,6 +51,15 @@ export function formatTimeOfDay(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+// Calendar date for a row: "Today" / "Yesterday" / else a short date, e.g. "Jun 3".
+export function formatRowDate(iso: string): string {
+  const t = new Date(iso).getTime();
+  return (
+    dayLabel(t) ??
+    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  );
 }
 
 // Date + time for a notification, e.g. "Jun 4, 2:14 PM".
