@@ -1,6 +1,7 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { NotifyAgainButton } from "@/components/NotifyAgainButton";
 import { Avatar } from "@/design-system/primitives/Avatar";
@@ -13,11 +14,14 @@ import { useEerc } from "@/features/eerc/useEerc";
 import { displayName } from "@/lib/identity";
 import { formatMoney } from "@/lib/money";
 
-const META: Record<string, { icon: string; verb: string }> = {
-  received: { icon: "💸", verb: " paid you" },
-  request: { icon: "🙋", verb: " requested money" },
-  outgoing: { icon: "🔔", verb: " — you asked" },
-  declined: { icon: "🚫", verb: " declined your request" },
+type FeatherName = ComponentProps<typeof Feather>["name"];
+type ColorKey = "positive" | "actBlue" | "sub" | "avRed";
+
+const META: Record<string, { icon: FeatherName; color: ColorKey; verb: string }> = {
+  received: { icon: "arrow-down-left", color: "positive", verb: " paid you" },
+  request: { icon: "arrow-up-right", color: "actBlue", verb: " requested money" },
+  outgoing: { icon: "clock", color: "sub", verb: " — you asked" },
+  declined: { icon: "slash", color: "avRed", verb: " declined your request" },
 };
 
 // One inbox row. Received → tap to its receipt. Incoming request → decrypted amount + a
@@ -125,7 +129,7 @@ export function NotificationRow({
       <View style={styles.iconWrap}>
         <Avatar name={name} size={42} />
         <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-          <Text style={styles.badgeIcon}>{meta.icon}</Text>
+          <Feather name={meta.icon} size={11} color={colors[meta.color]} />
         </View>
       </View>
       <View style={styles.who}>
@@ -190,7 +194,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeIcon: { fontSize: 11 },
   who: { flex: 1, minWidth: 0 },
   line: { fontFamily: fonts.ui, fontSize: 14.5 },
   bold: { fontWeight: "700" },

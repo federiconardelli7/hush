@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -16,7 +17,7 @@ import { Avatar } from "@/design-system/primitives/Avatar";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
-import { fonts } from "@/design-system/typography";
+import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
 import { useContacts } from "@/features/contacts/useContacts";
 import { useEerc } from "@/features/eerc/useEerc";
@@ -28,7 +29,9 @@ export default function Pay() {
   const { address } = useEerc();
   const me = address?.toLowerCase();
   const params = useLocalSearchParams<{ mode?: string }>();
-  const [isRequest, setIsRequest] = useState(params.mode === "request");
+  const explicit = params.mode === "pay" || params.mode === "request";
+  const [toggleRequest, setToggleRequest] = useState(false);
+  const isRequest = explicit ? params.mode === "request" : toggleRequest;
   const contacts = useContacts(me);
   const nickByAddr = new Map(
     (contacts.data ?? []).map((c) => [c.contact_address, c.nickname]),
@@ -77,22 +80,24 @@ export default function Pay() {
     const resultList = results.filter((p) => p.address !== me);
     const desktopBody = (
       <>
-        <View style={styles.modeRow}>
-          {([false, true] as const).map((req) => {
-            const on = req === isRequest;
-            return (
-              <Pressable
-                key={req ? "request" : "pay"}
-                onPress={() => setIsRequest(req)}
-                style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
-              >
-                <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
-                  {req ? "Request" : "Pay"}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {!explicit ? (
+          <View style={styles.modeRow}>
+            {([false, true] as const).map((req) => {
+              const on = req === isRequest;
+              return (
+                <Pressable
+                  key={req ? "request" : "pay"}
+                  onPress={() => setToggleRequest(req)}
+                  style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
+                >
+                  <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
+                    {req ? "Request" : "Pay"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -114,7 +119,10 @@ export default function Pay() {
           }
           style={styles.scan}
         >
-          <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+          <View style={styles.scanRow}>
+            <Feather name="camera" size={15} color={colors.actBlue} />
+            <Text style={[styles.scanText, { color: colors.actBlue }]}>Scan a code</Text>
+          </View>
         </Pressable>
 
         {trimmed.length === 0 ? (
@@ -175,7 +183,11 @@ export default function Pay() {
       </>
     );
     return (
-      <DesktopScreen title="Pay or request" back maxWidth={560}>
+      <DesktopScreen
+        title={explicit ? (isRequest ? "Request" : "Pay") : "Pay or request"}
+        back
+        maxWidth={560}
+      >
         {desktopBody}
       </DesktopScreen>
     );
@@ -183,22 +195,28 @@ export default function Pay() {
 
   return (
     <ScreenContainer>
-      <View style={styles.modeRow}>
-        {([false, true] as const).map((req) => {
-          const on = req === isRequest;
-          return (
-            <Pressable
-              key={req ? "request" : "pay"}
-              onPress={() => setIsRequest(req)}
-              style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
-            >
-              <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
-                {req ? "Request" : "Pay"}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {explicit ? (
+        <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
+          {isRequest ? "Request" : "Pay"}
+        </Text>
+      ) : (
+        <View style={styles.modeRow}>
+          {([false, true] as const).map((req) => {
+            const on = req === isRequest;
+            return (
+              <Pressable
+                key={req ? "request" : "pay"}
+                onPress={() => setToggleRequest(req)}
+                style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
+              >
+                <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
+                  {req ? "Request" : "Pay"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       <TextInput
         value={query}
         onChangeText={setQuery}
@@ -220,7 +238,10 @@ export default function Pay() {
         }
         style={styles.scan}
       >
-        <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+        <View style={styles.scanRow}>
+          <Feather name="camera" size={15} color={colors.actBlue} />
+          <Text style={[styles.scanText, { color: colors.actBlue }]}>Scan a code</Text>
+        </View>
       </Pressable>
 
       {trimmed.length === 0 ? (
@@ -303,6 +324,7 @@ const styles = StyleSheet.create({
   },
   spinner: { marginTop: spacing.md },
   scan: { alignSelf: "flex-start", paddingVertical: spacing.sm, marginTop: spacing.xs },
+  scanRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   scanText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   section: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600", marginTop: spacing.md, marginBottom: spacing.xs },
   list: { paddingTop: spacing.md, gap: spacing.sm },

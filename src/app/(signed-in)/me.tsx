@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { usePrivy } from "@privy-io/react-auth";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
@@ -21,7 +22,7 @@ function Row({
   onPress,
   first,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   sub?: string;
   right?: ReactNode;
@@ -34,7 +35,7 @@ function Row({
       onPress={onPress}
       style={[styles.row, first ? null : { borderTopWidth: 1, borderTopColor: colors.line }]}
     >
-      <Text style={styles.rowIcon}>{icon}</Text>
+      <View style={styles.rowIcon}>{icon}</View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[styles.rowLabel, { color: colors.ink }]}>{label}</Text>
         {sub ? (
@@ -70,20 +71,28 @@ export default function Me() {
     <>
       <View style={[styles.card, { backgroundColor: colors.card }]}>
         <Row
-          icon="👤"
+          icon={<Feather name="user" size={18} color={colors.sub} />}
           label="Edit profile"
           onPress={() => router.push("/edit-profile")}
           first
         />
-        <Row icon="🔳" label="My QR code" onPress={() => router.push("/my-code")} />
         <Row
-          icon="🔒"
+          icon={<Feather name="grid" size={18} color={colors.sub} />}
+          label="My QR code"
+          onPress={() => router.push("/my-code")}
+        />
+        <Row
+          icon={<Feather name="lock" size={18} color={colors.sub} />}
           label="Privacy & security"
           onPress={() => router.push("/privacy")}
         />
-        <Row icon="👥" label="Contacts" onPress={() => router.push("/contacts")} />
         <Row
-          icon={isDark ? "🌙" : "☀️"}
+          icon={<Feather name="users" size={18} color={colors.sub} />}
+          label="Contacts"
+          onPress={() => router.push("/contacts")}
+        />
+        <Row
+          icon={<Feather name={isDark ? "moon" : "sun"} size={18} color={colors.sub} />}
           label="Appearance"
           sub={isDark ? "Dark" : "Light"}
           onPress={toggle}
@@ -151,20 +160,28 @@ export default function Me() {
 
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Row
-            icon="👤"
+            icon={<Feather name="user" size={18} color={colors.sub} />}
             label="Edit profile"
             onPress={() => router.push("/edit-profile")}
             first
           />
-          <Row icon="🔳" label="My QR code" onPress={() => router.push("/my-code")} />
           <Row
-            icon="🔒"
+          icon={<Feather name="grid" size={18} color={colors.sub} />}
+          label="My QR code"
+          onPress={() => router.push("/my-code")}
+        />
+          <Row
+            icon={<Feather name="lock" size={18} color={colors.sub} />}
             label="Privacy & security"
             onPress={() => router.push("/privacy")}
           />
-          <Row icon="👥" label="Contacts" onPress={() => router.push("/contacts")} />
           <Row
-            icon={isDark ? "🌙" : "☀️"}
+          icon={<Feather name="users" size={18} color={colors.sub} />}
+          label="Contacts"
+          onPress={() => router.push("/contacts")}
+        />
+          <Row
+            icon={<Feather name={isDark ? "moon" : "sun"} size={18} color={colors.sub} />}
             label="Appearance"
             sub={isDark ? "Dark" : "Light"}
             onPress={toggle}
@@ -212,7 +229,7 @@ const styles = StyleSheet.create({
   pAddr: { fontFamily: fonts.mono, fontSize: 11.5, marginTop: 4 },
   card: { borderRadius: radius.card, paddingHorizontal: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 14 },
-  rowIcon: { fontSize: 18, width: 22, textAlign: "center" },
+  rowIcon: { width: 22, alignItems: "center" },
   rowLabel: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "500" },
   rowSub: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
   chev: { fontFamily: fonts.ui, fontSize: 16, fontWeight: "600" },

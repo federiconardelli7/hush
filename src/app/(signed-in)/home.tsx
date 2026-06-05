@@ -72,7 +72,12 @@ export default function Home() {
       onPress: () => void;
     }[] = [
       { key: "add", icon: "plus", label: "Add", primary: true, onPress: () => router.push("/add-money") },
-      { key: "send", icon: "arrow-up-right", label: "Send", onPress: () => router.push("/pay") },
+      {
+        key: "send",
+        icon: "arrow-up-right",
+        label: "Send",
+        onPress: () => router.push({ pathname: "/pay", params: { mode: "pay" } }),
+      },
       {
         key: "request",
         icon: "arrow-down-left",
@@ -211,7 +216,9 @@ export default function Home() {
               label="Send"
               variant="secondary"
               style={styles.cell}
-              onPress={() => router.push("/pay")}
+              onPress={() =>
+                router.push({ pathname: "/pay", params: { mode: "pay" } })
+              }
             />
           </View>
           <View style={styles.row}>

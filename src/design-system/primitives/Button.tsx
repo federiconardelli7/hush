@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 import { radius, shadow } from "../tokens";
 import { fonts } from "../typography";
 import { useTheme } from "../theme";
@@ -14,7 +14,7 @@ export function Button({
   label: string;
   onPress?: () => void;
   variant?: Variant;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { colors } = useTheme();
   const bg =

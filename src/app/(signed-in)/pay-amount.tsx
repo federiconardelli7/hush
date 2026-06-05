@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
@@ -133,7 +134,7 @@ export default function PayAmount() {
   if (isWide) {
     return (
       <DesktopScreen title={`Pay ${name ?? ""}`.trim()} back center maxWidth={460}>
-        <View style={styles.amountWrap}>
+        <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
             {amount || "0"}
@@ -158,10 +159,14 @@ export default function PayAmount() {
                   },
                 ]}
               >
-                <Text style={[styles.aText, { color: on ? colors.actBlue : colors.sub }]}>
-                  {a === "private" ? "🔒 " : ""}
-                  {AUDIENCE_LABEL[a]}
-                </Text>
+                <View style={styles.aChipRow}>
+                  {a === "private" ? (
+                    <Feather name="lock" size={11} color={on ? colors.actBlue : colors.sub} />
+                  ) : null}
+                  <Text style={[styles.aText, { color: on ? colors.actBlue : colors.sub }]}>
+                    {AUDIENCE_LABEL[a]}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -196,10 +201,10 @@ export default function PayAmount() {
           }
           variant="primary"
           onPress={onPay}
-          style={styles.cta}
+          style={[styles.cta, styles.ctaWide]}
         />
         <Text style={[styles.footnote, { color: colors.sub }]}>
-          🛡 Encrypted · amount stays private
+          Encrypted · amount stays private
         </Text>
       </DesktopScreen>
     );
@@ -245,10 +250,14 @@ export default function PayAmount() {
                 },
               ]}
             >
-              <Text style={[styles.aText, { color: on ? colors.actBlue : colors.sub }]}>
-                {a === "private" ? "🔒 " : ""}
-                {AUDIENCE_LABEL[a]}
-              </Text>
+              <View style={styles.aChipRow}>
+                {a === "private" ? (
+                  <Feather name="lock" size={11} color={on ? colors.actBlue : colors.sub} />
+                ) : null}
+                <Text style={[styles.aText, { color: on ? colors.actBlue : colors.sub }]}>
+                  {AUDIENCE_LABEL[a]}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -286,7 +295,7 @@ export default function PayAmount() {
         style={styles.cta}
       />
       <Text style={[styles.footnote, { color: colors.sub }]}>
-        🛡 Encrypted · amount stays private
+        Encrypted · amount stays private
       </Text>
     </ScreenContainer>
   );
@@ -298,11 +307,13 @@ const styles = StyleSheet.create({
   chev: { fontSize: 26, fontWeight: "700", lineHeight: 28 },
   title: { flex: 1, textAlign: "center", fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
   amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm },
+  amountWrapWide: { marginTop: spacing.xl },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },
   avail: { fontFamily: fonts.ui, fontSize: 13 },
   audience: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.lg },
   aChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
+  aChipRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   aText: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   memo: {
     fontFamily: fonts.ui,
@@ -314,9 +325,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.md },
-  keypadWrapWide: { marginTop: spacing.lg },
+  keypadWrapWide: { marginTop: spacing.xl },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm },
+  ctaWide: { marginTop: spacing.xl },
   successCta: { alignSelf: "stretch", marginTop: spacing.lg },
   footnote: { fontFamily: fonts.ui, fontSize: 12, textAlign: "center", paddingVertical: spacing.md },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },

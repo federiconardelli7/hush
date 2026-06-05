@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -152,7 +153,8 @@ export default function AddContact() {
             onPress={() => router.push({ pathname: "/scan", params: { intent: "add" } })}
             style={styles.scan}
           >
-            <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+            <Feather name="camera" size={15} color={colors.actBlue} />
+            <Text style={[styles.scanText, { color: colors.actBlue }]}>Scan a code</Text>
           </Pressable>
 
           {pasteAddress ? (
@@ -260,7 +262,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   spinner: { marginTop: spacing.md },
-  scan: { alignSelf: "flex-start", paddingVertical: spacing.sm, marginTop: spacing.xs },
+  scan: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
   scanText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   list: { paddingTop: spacing.md, gap: spacing.sm },
   item: {

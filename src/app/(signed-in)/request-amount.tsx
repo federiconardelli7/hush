@@ -119,7 +119,7 @@ export default function RequestAmount() {
   if (isWide) {
     return (
       <DesktopScreen title={`Request ${name ?? ""}`.trim()} back center maxWidth={460}>
-        <View style={styles.amountWrap}>
+        <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
             {amount || "0"}
@@ -147,10 +147,10 @@ export default function RequestAmount() {
           label={busy ? "Sending request…" : value > 0 ? `Request $${amount}` : "Enter an amount"}
           variant="primary"
           onPress={onRequest}
-          style={styles.cta}
+          style={[styles.cta, styles.ctaWide]}
         />
         <Text style={[styles.footnote, { color: colors.sub }]}>
-          🔒 The amount is encrypted — only you two can read it.
+          The amount is encrypted — only you two can read it.
         </Text>
       </DesktopScreen>
     );
@@ -191,7 +191,7 @@ export default function RequestAmount() {
         style={styles.cta}
       />
       <Text style={[styles.footnote, { color: colors.sub }]}>
-        🔒 The amount is encrypted — only you two can read it.
+        The amount is encrypted — only you two can read it.
       </Text>
     </ScreenContainer>
   );
@@ -199,6 +199,7 @@ export default function RequestAmount() {
 
 const styles = StyleSheet.create({
   amountWrap: { alignItems: "center", marginTop: spacing.xl, gap: spacing.sm },
+  amountWrapWide: { marginTop: spacing.xl + spacing.sm },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },
   memo: {
@@ -211,9 +212,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.md },
-  keypadWrapWide: { marginTop: spacing.lg },
+  keypadWrapWide: { marginTop: spacing.xl },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm },
+  ctaWide: { marginTop: spacing.xl },
   successCta: { alignSelf: "stretch", marginTop: spacing.lg },
   footnote: { fontFamily: fonts.ui, fontSize: 12, textAlign: "center", paddingVertical: spacing.md },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },

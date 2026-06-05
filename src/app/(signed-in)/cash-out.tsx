@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -65,7 +66,7 @@ export default function CashOut() {
   if (isWide) {
     const desktopBody = (
       <>
-        <View style={styles.amountWrap}>
+        <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text
             style={[
               typeScale.balanceHero,
@@ -113,12 +114,13 @@ export default function CashOut() {
 
         <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
           <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-            <Text style={{ fontSize: 17 }}>🏦</Text>
+            <Feather name="upload" size={20} color={colors.ink} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · test tokens</Text>
             <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
           </View>
+          <Feather name="chevron-right" size={20} color={colors.sub} />
         </View>
 
         <View style={styles.keypadWrapWide}>
@@ -204,12 +206,13 @@ export default function CashOut() {
 
       <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
         <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-          <Text style={{ fontSize: 17 }}>🏦</Text>
+          <Feather name="upload" size={20} color={colors.ink} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · test tokens</Text>
           <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
         </View>
+        <Feather name="chevron-right" size={20} color={colors.sub} />
       </View>
 
       <View style={styles.keypadWrap}>
@@ -235,6 +238,7 @@ const styles = StyleSheet.create({
   chev: { fontSize: 26, fontWeight: "700", lineHeight: 28 },
   title: { flex: 1, textAlign: "center", fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
   amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm },
+  amountWrapWide: { marginTop: spacing.xl },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 30, fontWeight: "700" },
   caption: { fontFamily: fonts.ui, fontSize: 12.5, textAlign: "center", maxWidth: 280 },
@@ -254,8 +258,8 @@ const styles = StyleSheet.create({
   methodSub: { fontFamily: fonts.ui, fontSize: 12 },
   methodMain: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.lg },
-  keypadWrapWide: { marginTop: spacing.lg },
+  keypadWrapWide: { marginTop: spacing.xl },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm, marginBottom: spacing.lg },
-  ctaWide: { marginTop: spacing.lg },
+  ctaWide: { marginTop: spacing.xl },
 });

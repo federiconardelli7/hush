@@ -1,6 +1,7 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "@/design-system/theme";
 import { radius } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -42,30 +43,35 @@ export function NotifyAgainButton({
 
   if (cooldown) {
     return (
-      <Text style={[styles.chip, styles.muted, { backgroundColor: colors.chip, color: colors.sub }]}>
-        🔔 {cooldown}
-      </Text>
+      <View style={[styles.chip, { backgroundColor: colors.chip }]}>
+        <Feather name="bell" size={14} color={colors.sub} />
+        <Text style={[styles.chipText, styles.muted, { color: colors.sub }]}>{cooldown}</Text>
+      </View>
     );
   }
   return (
     <Pressable onPress={remind} disabled={busy}>
-      <Text style={[styles.chip, styles.outline, { borderColor: colors.actBlue, color: colors.actBlue }]}>
-        🔔 {busy ? "Notifying…" : "Notify again"}
-      </Text>
+      <View style={[styles.chip, styles.outline, { borderColor: colors.actBlue }]}>
+        <Feather name="bell" size={14} color={colors.actBlue} />
+        <Text style={[styles.chipText, { color: colors.actBlue }]}>
+          {busy ? "Notifying…" : "Notify again"}
+        </Text>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
-    fontFamily: fonts.ui,
-    fontSize: 12.5,
-    fontWeight: "700",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 13,
     borderRadius: radius.button,
     overflow: "hidden",
   },
+  chipText: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "700" },
   outline: { borderWidth: 1.5 },
   muted: { fontWeight: "600" },
 });
