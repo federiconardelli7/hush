@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  View,
 } from "react-native";
 import { isAddress } from "viem";
 import { ContactRow } from "@/components/ContactRow";
@@ -14,7 +15,7 @@ import { Avatar } from "@/design-system/primitives/Avatar";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
-import { fonts, typeScale } from "@/design-system/typography";
+import { fonts } from "@/design-system/typography";
 import { useContacts } from "@/features/contacts/useContacts";
 import { useEerc } from "@/features/eerc/useEerc";
 import { profilesRepo } from "@/features/profile/profilesRepo";
@@ -24,8 +25,8 @@ export default function Pay() {
   const { colors } = useTheme();
   const { address } = useEerc();
   const me = address?.toLowerCase();
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const isRequest = mode === "request";
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [isRequest, setIsRequest] = useState(params.mode === "request");
   const contacts = useContacts(me);
   const nickByAddr = new Map(
     (contacts.data ?? []).map((c) => [c.contact_address, c.nickname]),
@@ -69,9 +70,22 @@ export default function Pay() {
 
   return (
     <ScreenContainer>
-      <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
-        {isRequest ? "Request" : "Pay"}
-      </Text>
+      <View style={styles.modeRow}>
+        {([false, true] as const).map((req) => {
+          const on = req === isRequest;
+          return (
+            <Pressable
+              key={req ? "request" : "pay"}
+              onPress={() => setIsRequest(req)}
+              style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
+            >
+              <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
+                {req ? "Request" : "Pay"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       <TextInput
         value={query}
         onChangeText={setQuery}
@@ -162,6 +176,9 @@ export default function Pay() {
 }
 
 const styles = StyleSheet.create({
+  modeRow: { flexDirection: "row", gap: spacing.sm },
+  modeSeg: { flex: 1, paddingVertical: 11, borderRadius: radius.pill, alignItems: "center" },
+  modeSegText: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "700" },
   input: {
     fontFamily: fonts.ui,
     fontSize: 16,
