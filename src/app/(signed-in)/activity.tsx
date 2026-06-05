@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { ActivityRow } from "@/components/ActivityRow";
+import { ACTIVITY_COLS, ActivityRow } from "@/components/ActivityRow";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { RequestRow } from "@/components/RequestRow";
 import { Button } from "@/design-system/primitives/Button";
@@ -20,7 +20,7 @@ import { useIsWide } from "@/design-system/useResponsive";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { groupByDate } from "@/features/payments/dateGroups";
-import { useActivity } from "@/features/payments/useActivity";
+import { useActivity, type ActivityEntry } from "@/features/payments/useActivity";
 import { useRequests } from "@/features/requests/useRequests";
 import { displayName } from "@/lib/identity";
 
@@ -55,6 +55,7 @@ export default function Activity() {
   const activity = useActivity(me);
   const requests = useRequests(me);
   const [filter, setFilter] = useState(0);
+  const [search, setSearch] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [range, setRange] = useState<RangeId>("all");
   const [showDate, setShowDate] = useState(false);
@@ -94,6 +95,21 @@ export default function Activity() {
     setShowDate(false);
   };
 
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (p: ActivityEntry): boolean => {
+    if (!q) return true;
+    const hay = [
+      p.caption ?? "",
+      p.counterparty?.display_name ?? "",
+      p.counterparty?.username ?? "",
+      p.counterpartyAddress ?? "",
+      p.kind === "deposit" ? "added money" : p.kind === "withdraw" ? "cashed out" : "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  };
+
   const items = isRequests
     ? []
     : (activity.data ?? [])
@@ -105,7 +121,8 @@ export default function Activity() {
           }
           return true;
         })
-        .filter((p) => inRange(p.created_at));
+        .filter((p) => inRange(p.created_at))
+        .filter(matchesSearch);
   const groups = groupByDate(items);
 
   // The "Requests" filter lists your money requests (incoming + outgoing), newest
@@ -168,6 +185,21 @@ export default function Activity() {
           </Text>
         </Pressable>
       </View>
+
+      {!isRequests ? (
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search notes or names"
+          placeholderTextColor={colors.sub}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[
+            styles.searchInput,
+            { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
+          ]}
+        />
+      ) : null}
 
       {showDate ? (
         <View style={styles.datePanel}>
@@ -267,7 +299,6 @@ export default function Activity() {
             <View style={[styles.tableHead, { borderBottomColor: colors.line }]}>
               <Text style={[styles.tableHeadCell, styles.colWho, { color: colors.sub }]}>Who</Text>
               <Text style={[styles.tableHeadCell, styles.colNote, { color: colors.sub }]}>Note</Text>
-              <Text style={[styles.tableHeadCell, styles.colType, { color: colors.sub }]}>Type</Text>
               <Text style={[styles.tableHeadCell, styles.colAmount, { color: colors.sub }]}>Amount</Text>
             </View>
             {items.map((p, i) => (
@@ -294,7 +325,7 @@ export default function Activity() {
                   i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined,
                 ]}
               >
-                <ActivityRow item={p} />
+                <ActivityRow item={p} variant="table" />
               </Pressable>
             ))}
           </View>
@@ -429,6 +460,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   datePillText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
+  searchInput: {
+    fontFamily: fonts.ui,
+    fontSize: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+  },
   datePanel: { marginTop: spacing.md, gap: spacing.sm },
   customRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   dateInput: {
@@ -477,10 +517,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
-  colWho: { flexBasis: 230, flexGrow: 0, flexShrink: 0 },
+  colWho: { flexBasis: ACTIVITY_COLS.who, flexGrow: 0, flexShrink: 0 },
   colNote: { flex: 1 },
-  colType: { flexBasis: 110, flexGrow: 0, flexShrink: 0 },
-  colAmount: { flexBasis: 120, flexGrow: 0, flexShrink: 0, textAlign: "right" },
+  colAmount: { flexBasis: ACTIVITY_COLS.amount, flexGrow: 0, flexShrink: 0, textAlign: "right" },
   tableRow: { paddingHorizontal: 22 },
   deskList: { gap: spacing.sm },
   list: { paddingBottom: spacing.xl },

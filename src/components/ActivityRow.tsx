@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { useTheme } from "@/design-system/theme";
+import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { formatTimeOfDay } from "@/features/payments/dateGroups";
@@ -14,11 +15,21 @@ const CASH_META: Record<"deposit" | "withdraw", { icon: string; label: string }>
   withdraw: { icon: "🏦", label: "Cashed out" },
 };
 
+// Column widths shared by the desktop Activity table header (activity.tsx) and
+// the "table" variant below, so headers and cells stay aligned. Note = flex:1.
+export const ACTIVITY_COLS = { who: 230, amount: 120 } as const;
+
 // One Activity row across all kinds: transfers show the counterparty + note;
 // deposit/withdraw show an icon tile + "Added money" / "Cashed out". The amount
 // (green +money-in / red −money-out) is decrypted on-chain per tx and cached;
 // it only runs once the decryption key is unlocked.
-export function ActivityRow({ item }: { item: ActivityEntry }) {
+export function ActivityRow({
+  item,
+  variant = "list",
+}: {
+  item: ActivityEntry;
+  variant?: "list" | "table";
+}) {
   const { colors } = useTheme();
   const eerc = useEerc();
   const isTransfer = item.kind === "sent" || item.kind === "received";
@@ -49,6 +60,46 @@ export function ActivityRow({ item }: { item: ActivityEntry }) {
   else if (amount.data == null) amountText = "—";
   else amountText = formatSignedMoney(amount.data, positive);
   const hasAmount = eerc.isDecryptionKeySet && amount.data != null;
+
+  const leading = isTransfer ? (
+    <Avatar name={name} size={36} />
+  ) : (
+    <View style={[styles.icon, styles.iconSm, { backgroundColor: colors.chip }]}>
+      <Text style={styles.iconTextSm}>
+        {CASH_META[item.kind as "deposit" | "withdraw"].icon}
+      </Text>
+    </View>
+  );
+  const amountColor = hasAmount
+    ? positive
+      ? colors.positive
+      : colors.avRed
+    : colors.sub;
+
+  if (variant === "table") {
+    return (
+      <View style={styles.tRow}>
+        <View style={styles.tWho}>
+          {leading}
+          <Text style={[styles.name, styles.tName, { color: colors.ink }]} numberOfLines={1}>
+            {name}
+          </Text>
+        </View>
+        <Text
+          style={[styles.tNote, { color: note ? colors.sub : colors.line }]}
+          numberOfLines={1}
+        >
+          {note || "—"}
+        </Text>
+        <View style={styles.tAmount}>
+          <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+          <Text style={[styles.time, { color: colors.sub }]}>
+            {formatTimeOfDay(item.created_at)}
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.row}>
@@ -104,4 +155,19 @@ const styles = StyleSheet.create({
   right: { alignItems: "flex-end" },
   amount: { fontFamily: fonts.ui, fontSize: 14.5, fontWeight: "700" },
   time: { fontFamily: fonts.ui, fontSize: 10.5, marginTop: 1 },
+  // Desktop "table" variant — cells aligned to the activity.tsx header columns.
+  iconSm: { width: 36, height: 36, borderRadius: 18 },
+  iconTextSm: { fontSize: 16 },
+  tRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14 },
+  tWho: {
+    flexBasis: ACTIVITY_COLS.who,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  tName: { flexShrink: 1 },
+  tNote: { flex: 1, fontFamily: fonts.ui, fontSize: 13.5, paddingRight: spacing.md },
+  tAmount: { flexBasis: ACTIVITY_COLS.amount, flexGrow: 0, flexShrink: 0, alignItems: "flex-end" },
 });
