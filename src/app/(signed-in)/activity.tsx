@@ -10,11 +10,13 @@ import {
   View,
 } from "react-native";
 import { ActivityRow } from "@/components/ActivityRow";
+import { DesktopScreen } from "@/components/DesktopScreen";
 import { RequestRow } from "@/components/RequestRow";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
+import { useIsWide } from "@/design-system/useResponsive";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { groupByDate } from "@/features/payments/dateGroups";
@@ -47,6 +49,7 @@ const parseDay = (s: string): number | null => {
 
 export default function Activity() {
   const { colors } = useTheme();
+  const isWide = useIsWide();
   const eerc = useEerc();
   const me = eerc.address?.toLowerCase();
   const activity = useActivity(me);
@@ -133,6 +136,185 @@ export default function Activity() {
       setUnlocking(false);
     }
   };
+
+  // Date-range control (chips + custom inputs), shared by both layouts.
+  const dateControl = (
+    <>
+      <View style={styles.titleRow}>
+        {isWide ? <View /> : (
+          <Text style={[typeScale.screenTitle, { color: colors.ink }]}>Activity</Text>
+        )}
+        <Pressable
+          onPress={() => setShowDate((s) => !s)}
+          style={[styles.datePill, { backgroundColor: colors.chip }]}
+        >
+          <Text style={[styles.datePillText, { color: colors.ink }]}>
+            🗓  {RANGE_LABEL[range]}  ▾
+          </Text>
+        </Pressable>
+      </View>
+
+      {showDate ? (
+        <View style={styles.datePanel}>
+          <View style={styles.segment}>
+            {RANGES.map((r) => {
+              const on = r.id === range;
+              return (
+                <Pressable
+                  key={r.id}
+                  onPress={() => {
+                    setRange(r.id);
+                    if (r.id !== "custom") setShowDate(false);
+                  }}
+                  style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
+                >
+                  <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
+                    {r.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {range === "custom" ? (
+            <View style={styles.customRow}>
+              <TextInput
+                value={fromStr}
+                onChangeText={setFromStr}
+                placeholder="From  YYYY-MM-DD"
+                placeholderTextColor={colors.sub}
+                autoCapitalize="none"
+                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
+              />
+              <TextInput
+                value={toStr}
+                onChangeText={setToStr}
+                placeholder="To  YYYY-MM-DD"
+                placeholderTextColor={colors.sub}
+                autoCapitalize="none"
+                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
+              />
+              <Pressable onPress={applyCustom} style={[styles.apply, { backgroundColor: colors.actBlue }]}>
+                <Text style={styles.applyText}>Apply</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </>
+  );
+
+  // Kind-filter chip row (All / Sent / Received / Added-Out / Requests).
+  const filterChips = (
+    <View style={styles.segment}>
+      {FILTERS.map((f, i) => {
+        const on = i === filter;
+        return (
+          <Pressable
+            key={f}
+            onPress={() => setFilter(i)}
+            style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
+          >
+            <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
+              {f}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const unlockBanner =
+    eerc.isRegistered && !eerc.isDecryptionKeySet ? (
+      <View style={[styles.unlock, { backgroundColor: colors.card }]}>
+        <Text style={[styles.unlockText, { color: colors.sub }]}>
+          Unlock to reveal your amounts — one signature, never leaves this device.
+        </Text>
+        <Button
+          label={unlocking ? "Unlocking…" : "Show amounts"}
+          variant="primary"
+          onPress={unlock}
+        />
+      </View>
+    ) : null;
+
+  if (isWide) {
+    // Desktop: DesktopScreen owns the top bar (title + bell + settings) and the
+    // centered scrolling column, so the body must not add its own title/bell or a
+    // FlatList (that would nest scroll views). Payments render as a flat bordered
+    // "list table" of reused ActivityRow rows — ActivityRow owns per-row decryption.
+    const empty = (
+      <Text style={[styles.empty, { color: colors.sub }]}>
+        {isRequests
+          ? requests.isLoading
+            ? "Loading…"
+            : "No requests in this range."
+          : activity.isLoading
+            ? "Loading…"
+            : "No payments in this range."}
+      </Text>
+    );
+    const desktopBody = (
+      <>
+        {dateControl}
+        {filterChips}
+        {unlockBanner}
+        {isRequests ? (
+          requestRows.length ? (
+            <View style={styles.deskList}>
+              {requestRows.map((x) => (
+                <RequestRow key={x.key} item={x.item} direction={x.direction} />
+              ))}
+            </View>
+          ) : (
+            empty
+          )
+        ) : items.length ? (
+          <View style={[styles.tableCard, { backgroundColor: colors.card, borderColor: colors.line }]}>
+            <View style={[styles.tableHead, { borderBottomColor: colors.line }]}>
+              <Text style={[styles.tableHeadCell, styles.colWho, { color: colors.sub }]}>Who</Text>
+              <Text style={[styles.tableHeadCell, styles.colNote, { color: colors.sub }]}>Note</Text>
+              <Text style={[styles.tableHeadCell, styles.colType, { color: colors.sub }]}>Type</Text>
+              <Text style={[styles.tableHeadCell, styles.colAmount, { color: colors.sub }]}>Amount</Text>
+            </View>
+            {items.map((p, i) => (
+              <Pressable
+                key={p.tx_hash}
+                onPress={() =>
+                  router.push({
+                    pathname: "/receipt",
+                    params: {
+                      txHash: p.tx_hash,
+                      kind: p.kind,
+                      name:
+                        p.kind === "deposit" || p.kind === "withdraw"
+                          ? ""
+                          : displayName(p.counterparty, p.counterpartyAddress ?? ""),
+                      address: p.counterpartyAddress ?? "",
+                      caption: p.caption ?? "",
+                      createdAt: p.created_at,
+                    },
+                  })
+                }
+                style={[
+                  styles.tableRow,
+                  i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined,
+                ]}
+              >
+                <ActivityRow item={p} />
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          empty
+        )}
+      </>
+    );
+    return (
+      <DesktopScreen title="Activity" maxWidth={1100}>
+        {desktopBody}
+      </DesktopScreen>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -352,6 +534,27 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   card: { borderRadius: radius.card, paddingHorizontal: 16 },
+  // Desktop "list table": one bordered card, header row, ActivityRow per row.
+  tableCard: { borderRadius: 18, overflow: "hidden", borderWidth: 1 },
+  tableHead: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderBottomWidth: 1,
+  },
+  tableHeadCell: {
+    fontFamily: fonts.ui,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  colWho: { flexBasis: 230, flexGrow: 0, flexShrink: 0 },
+  colNote: { flex: 1 },
+  colType: { flexBasis: 110, flexGrow: 0, flexShrink: 0 },
+  colAmount: { flexBasis: 120, flexGrow: 0, flexShrink: 0, textAlign: "right" },
+  tableRow: { paddingHorizontal: 22 },
+  deskList: { gap: spacing.sm },
   list: { paddingBottom: spacing.xl },
   empty: {
     fontFamily: fonts.ui,

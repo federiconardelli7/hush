@@ -59,7 +59,7 @@ export default function CashOut() {
           : "Enter an amount";
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={520}>
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}

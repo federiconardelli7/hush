@@ -2,11 +2,13 @@ import { usePrivy } from "@privy-io/react-auth";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { DesktopScreen } from "@/components/DesktopScreen";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
+import { useIsWide } from "@/design-system/useResponsive";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
@@ -48,6 +50,7 @@ function Row({
 
 export default function Me() {
   const { colors, isDark, toggle } = useTheme();
+  const isWide = useIsWide();
   const { logout } = usePrivy();
   const { address, supabaseStatus, supabaseBoundWallet, supabaseError } = useEerc();
   const profile = useProfile(address ?? null);
@@ -62,6 +65,66 @@ export default function Me() {
         : bound
           ? `Database bound ✓ · RLS sees ${supabaseBoundWallet?.slice(0, 10)}…`
           : "Database: connecting…";
+
+  const settings = (
+    <>
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <Row
+          icon="👤"
+          label="Edit profile"
+          onPress={() => router.push("/edit-profile")}
+          first
+        />
+        <Row icon="🔳" label="My QR code" onPress={() => router.push("/my-code")} />
+        <Row
+          icon="🔒"
+          label="Privacy & security"
+          onPress={() => router.push("/privacy")}
+        />
+        <Row icon="👥" label="Contacts" onPress={() => router.push("/contacts")} />
+        <Row
+          icon={isDark ? "🌙" : "☀️"}
+          label="Appearance"
+          sub={isDark ? "Dark" : "Light"}
+          onPress={toggle}
+          right={
+            <Text style={[styles.chev, { color: colors.actBlue }]}>
+              {isDark ? "Light" : "Dark"}
+            </Text>
+          }
+        />
+      </View>
+
+      <Text
+        style={[
+          styles.dbLine,
+          { color: supabaseStatus === "error" ? colors.avRed : bound ? colors.positive : colors.sub },
+        ]}
+      >
+        {dbLine}
+      </Text>
+
+      <Button
+        label="Sign out"
+        variant="ghost"
+        onPress={() => {
+          void logout();
+        }}
+        style={styles.signout}
+      />
+    </>
+  );
+
+  // Desktop: the profile lives in the sidebar, so Me becomes a clean Settings page —
+  // the settings card, db-status line and Sign out in the centered column (DesktopScreen
+  // already scrolls, so the profile header is dropped as redundant).
+  if (isWide) {
+    return (
+      <DesktopScreen title="Settings" maxWidth={600}>
+        {settings}
+      </DesktopScreen>
+    );
+  }
 
   return (
     <ScreenContainer>
