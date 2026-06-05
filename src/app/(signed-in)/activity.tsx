@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import type { TextStyle } from "react-native";
 import { ACTIVITY_COLS, ActivityRow } from "@/components/ActivityRow";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { RequestRow } from "@/components/RequestRow";
@@ -23,6 +25,11 @@ import { groupByDate } from "@/features/payments/dateGroups";
 import { useActivity, type ActivityEntry } from "@/features/payments/useActivity";
 import { useRequests } from "@/features/requests/useRequests";
 import { displayName } from "@/lib/identity";
+
+// react-native-web renders TextInput as an <input>, which gets a default blue
+// focus outline. Strip it (focus is shown via the container border instead) —
+// these web-only style props aren't in RN's TextStyle, hence the cast.
+const NO_WEB_OUTLINE = { outlineStyle: "none", outlineWidth: 0 } as unknown as TextStyle;
 
 const FILTERS = ["All", "Sent", "Received", "Added/Out", "Requests"] as const;
 
@@ -56,6 +63,7 @@ export default function Activity() {
   const requests = useRequests(me);
   const [filter, setFilter] = useState(0);
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [range, setRange] = useState<RangeId>("all");
   const [showDate, setShowDate] = useState(false);
@@ -176,6 +184,30 @@ export default function Activity() {
             );
           })}
         </View>
+        {!isRequests ? (
+          <View
+            style={[
+              styles.searchBox,
+              {
+                backgroundColor: colors.card,
+                borderColor: searchFocused ? colors.actBlue : colors.line,
+              },
+            ]}
+          >
+            <Feather name="search" size={14} color={searchFocused ? colors.actBlue : colors.sub} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Search notes"
+              placeholderTextColor={colors.sub}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.searchBoxInput, NO_WEB_OUTLINE, { color: colors.ink }]}
+            />
+          </View>
+        ) : null}
         <Pressable
           onPress={() => setShowDate((s) => !s)}
           style={[styles.datePill, { backgroundColor: colors.chip }]}
@@ -185,21 +217,6 @@ export default function Activity() {
           </Text>
         </Pressable>
       </View>
-
-      {!isRequests ? (
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search notes or names"
-          placeholderTextColor={colors.sub}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={[
-            styles.searchInput,
-            { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
-          ]}
-        />
-      ) : null}
 
       {showDate ? (
         <View style={styles.datePanel}>
@@ -446,11 +463,18 @@ const styles = StyleSheet.create({
   filterBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
+    flexWrap: "wrap",
+    gap: spacing.sm,
     marginVertical: spacing.md,
   },
-  filterChips: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  filterChips: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "auto",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   mobileTitle: { marginBottom: spacing.xs },
   datePill: {
     flexDirection: "row",
@@ -460,15 +484,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   datePillText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
-  searchInput: {
-    fontFamily: fonts.ui,
-    fontSize: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    borderRadius: radius.input,
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    width: 190,
+    minWidth: 120,
+    flexShrink: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    marginTop: spacing.sm,
   },
+  searchBoxInput: { flex: 1, fontFamily: fonts.ui, fontSize: 13, padding: 0 },
   datePanel: { marginTop: spacing.md, gap: spacing.sm },
   customRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   dateInput: {
