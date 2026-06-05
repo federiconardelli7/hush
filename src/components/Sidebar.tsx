@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { router, usePathname } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
@@ -8,10 +9,10 @@ import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
 
 const NAV = [
-  { label: "Home", icon: "🏠", path: "/home" },
-  { label: "Activity", icon: "🧾", path: "/activity" },
-  { label: "Feed", icon: "👥", path: "/feed" },
-  { label: "People", icon: "🤝", path: "/contacts" },
+  { label: "Home", icon: "home", path: "/home" },
+  { label: "Activity", icon: "activity", path: "/activity" },
+  { label: "Feed", icon: "globe", path: "/feed" },
+  { label: "People", icon: "users", path: "/contacts" },
 ] as const;
 
 // Desktop-only left sidebar (shown ≥ layout.wide; mobile keeps the bottom tab bar).
@@ -45,7 +46,12 @@ export function Sidebar() {
               onPress={() => router.push(item.path)}
               style={[styles.row, active ? { backgroundColor: colors.chip } : null]}
             >
-              <Text style={styles.rowIcon}>{item.icon}</Text>
+              <Feather
+                name={item.icon}
+                size={20}
+                color={active ? colors.actBlue : colors.sub}
+                style={styles.rowIcon}
+              />
               <Text
                 style={[
                   styles.rowLabel,
@@ -63,7 +69,8 @@ export function Sidebar() {
         onPress={() => router.push("/pay")}
         style={[styles.cta, { backgroundColor: colors.actBlue }, shadow.buttonBlue]}
       >
-        <Text style={styles.ctaText}>＋  Pay or request</Text>
+        <Feather name="plus" size={18} color="#fff" />
+        <Text style={styles.ctaText}>Pay or request</Text>
       </Pressable>
 
       <View style={styles.spacer} />
@@ -92,7 +99,7 @@ const styles = StyleSheet.create({
   word: { fontFamily: fonts.ui, fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
   nav: { gap: 3 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 13 },
-  rowIcon: { fontSize: 18, width: 22, textAlign: "center" },
+  rowIcon: { width: 22, textAlign: "center" },
   rowLabel: { fontFamily: fonts.ui, fontSize: 14.5 },
   cta: {
     flexDirection: "row",

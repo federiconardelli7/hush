@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -8,9 +9,10 @@ import { useReadIds } from "@/features/notifications/seen";
 import { isUnreadKind, useNotifications } from "@/features/notifications/useNotifications";
 
 // Desktop per-screen top bar: page title + optional `head` slot + a bell (with unread
-// dot) + settings gear. Bell/unread mirrors the Home logic so the badge stays consistent.
+// dot) + a one-click light/dark toggle (Settings is reachable via the sidebar profile
+// card, so the gear was redundant). Bell/unread mirrors the Home logic.
 export function WebTopBar({ title, head }: { title: string; head?: ReactNode }) {
-  const { colors } = useTheme();
+  const { colors, isDark, toggle } = useTheme();
   const { address } = useEerc();
   const me = address?.toLowerCase();
   const notifications = useNotifications(me);
@@ -28,16 +30,16 @@ export function WebTopBar({ title, head }: { title: string; head?: ReactNode }) 
           onPress={() => router.push("/notifications")}
           style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.line }]}
         >
-          <Text style={styles.icon}>🔔</Text>
+          <Feather name="bell" size={18} color={colors.ink} />
           {unread > 0 ? (
             <View style={[styles.dot, { backgroundColor: colors.actBlue, borderColor: colors.card }]} />
           ) : null}
         </Pressable>
         <Pressable
-          onPress={() => router.push("/me")}
+          onPress={toggle}
           style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.line }]}
         >
-          <Text style={styles.icon}>⚙️</Text>
+          <Feather name={isDark ? "sun" : "moon"} size={18} color={colors.ink} />
         </Pressable>
       </View>
     </View>
@@ -55,6 +57,5 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.ui, fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   right: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 10 },
   iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  icon: { fontSize: 18 },
   dot: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, borderWidth: 2 },
 });
