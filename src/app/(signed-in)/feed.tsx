@@ -80,12 +80,13 @@ export default function Feed() {
     </View>
   );
 
-  // Desktop: the page title + segmented control live in DesktopScreen's bar; the same
-  // rows render in a centered 600px column (DesktopScreen already scrolls, so no nested
-  // FlatList — mirrors home.tsx).
+  // Desktop: the page title lives in DesktopScreen's bar (alongside the bell + settings);
+  // the segmented control is the first item in the centered 600px column, above the rows
+  // (DesktopScreen already scrolls, so no nested FlatList — mirrors home.tsx).
   if (isWide) {
     return (
-      <DesktopScreen title="Feed" maxWidth={600} head={segment}>
+      <DesktopScreen title="Feed" maxWidth={600}>
+        {segment}
         {items.length === 0 ? (
           <Text style={[styles.empty, { color: colors.sub }]}>
             {feed.isLoading ? "Loading…" : "No payments yet."}

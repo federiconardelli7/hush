@@ -74,7 +74,10 @@ export default function PayAmount() {
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
       if (requestId) {
         await requestsRepo.setStatus(requestId, "fulfilled", transactionHash);
-        await queryClient.invalidateQueries({ queryKey: ["requests"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["requests"] }),
+          queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+        ]);
       }
       setDoneTx(transactionHash);
     } catch (err) {

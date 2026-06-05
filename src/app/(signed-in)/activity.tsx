@@ -137,13 +137,28 @@ export default function Activity() {
     }
   };
 
-  // Date-range control (chips + custom inputs), shared by both layouts.
-  const dateControl = (
+  // Kind-filter chips (left, may wrap) + date pill (right) share ONE row; the
+  // expandable date panel (presets + custom inputs) drops BELOW it. Shared by
+  // both layouts.
+  const filterBar = (
     <>
-      <View style={styles.titleRow}>
-        {isWide ? <View /> : (
-          <Text style={[typeScale.screenTitle, { color: colors.ink }]}>Activity</Text>
-        )}
+      <View style={styles.filterBar}>
+        <View style={styles.filterChips}>
+          {FILTERS.map((f, i) => {
+            const on = i === filter;
+            return (
+              <Pressable
+                key={f}
+                onPress={() => setFilter(i)}
+                style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
+              >
+                <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
+                  {f}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <Pressable
           onPress={() => setShowDate((s) => !s)}
           style={[styles.datePill, { backgroundColor: colors.chip }]}
@@ -203,26 +218,6 @@ export default function Activity() {
     </>
   );
 
-  // Kind-filter chip row (All / Sent / Received / Added-Out / Requests).
-  const filterChips = (
-    <View style={styles.segment}>
-      {FILTERS.map((f, i) => {
-        const on = i === filter;
-        return (
-          <Pressable
-            key={f}
-            onPress={() => setFilter(i)}
-            style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
-          >
-            <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
-              {f}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-
   const unlockBanner =
     eerc.isRegistered && !eerc.isDecryptionKeySet ? (
       <View style={[styles.unlock, { backgroundColor: colors.card }]}>
@@ -255,8 +250,7 @@ export default function Activity() {
     );
     const desktopBody = (
       <>
-        {dateControl}
-        {filterChips}
+        {filterBar}
         {unlockBanner}
         {isRequests ? (
           requestRows.length ? (
@@ -318,81 +312,11 @@ export default function Activity() {
 
   return (
     <ScreenContainer>
-      <View style={styles.titleRow}>
-        <Text style={[typeScale.screenTitle, { color: colors.ink }]}>Activity</Text>
-        <Pressable
-          onPress={() => setShowDate((s) => !s)}
-          style={[styles.datePill, { backgroundColor: colors.chip }]}
-        >
-          <Text style={[styles.datePillText, { color: colors.ink }]}>
-            🗓  {RANGE_LABEL[range]}  ▾
-          </Text>
-        </Pressable>
-      </View>
+      <Text style={[typeScale.screenTitle, styles.mobileTitle, { color: colors.ink }]}>
+        Activity
+      </Text>
 
-      {showDate ? (
-        <View style={styles.datePanel}>
-          <View style={styles.segment}>
-            {RANGES.map((r) => {
-              const on = r.id === range;
-              return (
-                <Pressable
-                  key={r.id}
-                  onPress={() => {
-                    setRange(r.id);
-                    if (r.id !== "custom") setShowDate(false);
-                  }}
-                  style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
-                >
-                  <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
-                    {r.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {range === "custom" ? (
-            <View style={styles.customRow}>
-              <TextInput
-                value={fromStr}
-                onChangeText={setFromStr}
-                placeholder="From  YYYY-MM-DD"
-                placeholderTextColor={colors.sub}
-                autoCapitalize="none"
-                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
-              />
-              <TextInput
-                value={toStr}
-                onChangeText={setToStr}
-                placeholder="To  YYYY-MM-DD"
-                placeholderTextColor={colors.sub}
-                autoCapitalize="none"
-                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
-              />
-              <Pressable onPress={applyCustom} style={[styles.apply, { backgroundColor: colors.actBlue }]}>
-                <Text style={styles.applyText}>Apply</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      <View style={styles.segment}>
-        {FILTERS.map((f, i) => {
-          const on = i === filter;
-          return (
-            <Pressable
-              key={f}
-              onPress={() => setFilter(i)}
-              style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
-            >
-              <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
-                {f}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {filterBar}
 
       {eerc.isRegistered && !eerc.isDecryptionKeySet ? (
         <View style={[styles.unlock, { backgroundColor: colors.card }]}>
@@ -487,12 +411,16 @@ export default function Activity() {
 }
 
 const styles = StyleSheet.create({
-  titleRow: {
+  // Kind chips (left, wrapping) + date pill (right) on one shared row.
+  filterBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
+    marginVertical: spacing.md,
   },
+  filterChips: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  mobileTitle: { marginBottom: spacing.xs },
   datePill: {
     flexDirection: "row",
     alignItems: "center",

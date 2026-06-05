@@ -55,7 +55,11 @@ export function RequestRow({
   else if (amount.data == null) amountText = "—";
   else amountText = formatMoney(amount.data);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["requests"] });
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["requests"] }),
+      queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    ]);
 
   const confirmDecline = async () => {
     if (busy) return;
@@ -133,7 +137,11 @@ export function RequestRow({
             </>
           ) : (
             <>
-              <NotifyAgainButton requestId={item.id} lastRemindedAt={item.last_reminded_at} />
+              <NotifyAgainButton
+                requestId={item.id}
+                lastRemindedAt={item.last_reminded_at}
+                createdAt={item.created_at}
+              />
               <Pressable onPress={cancel}>
                 <Text style={[styles.chip, styles.outline, { borderColor: colors.line, color: colors.sub }]}>
                   Cancel

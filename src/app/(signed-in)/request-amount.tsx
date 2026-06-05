@@ -57,7 +57,10 @@ export default function RequestAmount() {
         amount_enc_requester: encRequester,
         note: memo.trim() || undefined,
       });
-      await queryClient.invalidateQueries({ queryKey: ["requests"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send the request.");

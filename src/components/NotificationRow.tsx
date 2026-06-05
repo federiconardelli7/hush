@@ -108,7 +108,13 @@ export function NotificationRow({
       </View>
     );
   } else if (item.kind === "outgoing" && item.requestId) {
-    right = <NotifyAgainButton requestId={item.requestId} lastRemindedAt={item.lastRemindedAt} />;
+    right = (
+      <NotifyAgainButton
+        requestId={item.requestId}
+        lastRemindedAt={item.lastRemindedAt}
+        createdAt={item.created_at}
+      />
+    );
   }
 
   const body = (

@@ -1,3 +1,4 @@
+import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -65,25 +66,25 @@ export default function Home() {
     const recent = (activity.data ?? []).slice(0, 5);
     const tiles: {
       key: string;
-      icon: string;
+      icon: React.ComponentProps<typeof Feather>["name"];
       label: string;
       primary?: boolean;
       onPress: () => void;
     }[] = [
-      { key: "add", icon: "➕", label: "Add", primary: true, onPress: () => router.push("/add-money") },
-      { key: "send", icon: "➡️", label: "Send", onPress: () => router.push("/pay") },
+      { key: "add", icon: "plus", label: "Add", primary: true, onPress: () => router.push("/add-money") },
+      { key: "send", icon: "arrow-up-right", label: "Send", onPress: () => router.push("/pay") },
       {
         key: "request",
-        icon: "📥",
+        icon: "arrow-down-left",
         label: "Request",
         onPress: () => router.push({ pathname: "/pay", params: { mode: "request" } }),
       },
-      { key: "cashout", icon: "🏧", label: "Cash out", onPress: () => router.push("/cash-out") },
+      { key: "cashout", icon: "dollar-sign", label: "Cash out", onPress: () => router.push("/cash-out") },
     ];
 
     return (
       <DesktopScreen title="Home" maxWidth={760}>
-        <View style={[styles.balanceCard, { backgroundColor: colors.ink }, shadow.card]}>
+        <View style={[styles.balanceCard, { backgroundColor: "#16161B" }, shadow.card]}>
           <View style={styles.balanceLeft}>
             <View style={styles.balanceTopRow}>
               <Text style={styles.balanceLabel}>Total balance</Text>
@@ -104,7 +105,7 @@ export default function Home() {
                       : styles.tileGhost,
                   ]}
                 >
-                  <Text style={styles.tileIcon}>{t.icon}</Text>
+                  <Feather name={t.icon} size={22} color="#fff" />
                 </View>
                 <Text style={styles.tileCaption}>{t.label}</Text>
               </Pressable>
@@ -313,7 +314,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   tileGhost: { backgroundColor: "rgba(255,255,255,0.10)" },
-  tileIcon: { fontSize: 20 },
   tileCaption: {
     fontFamily: fonts.ui,
     fontSize: 11.5,

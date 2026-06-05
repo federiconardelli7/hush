@@ -66,9 +66,14 @@ export function relativeShort(iso: string): string {
 
 // "Notify again" cooldown: returns "Notify in Xh" while a request was reminded < 24h
 // ago, else null (a fresh nudge is allowed). null when never reminded.
-export function notifyCooldown(lastRemindedAt: string | null | undefined): string | null {
-  if (!lastRemindedAt) return null;
-  const left = new Date(lastRemindedAt).getTime() + 24 * 3_600_000 - Date.now();
+export function notifyCooldown(
+  lastRemindedAt: string | null | undefined,
+  createdAt: string,
+): string | null {
+  // Cooldown runs from the last nudge, or from creation if never nudged — so a brand-new
+  // request can't be nudged again immediately (creating it already pinged the other party).
+  const base = lastRemindedAt ?? createdAt;
+  const left = new Date(base).getTime() + 24 * 3_600_000 - Date.now();
   if (left <= 0) return null;
   const h = Math.ceil(left / 3_600_000);
   return h >= 1 ? `Notify in ${h}h` : "Notify soon";

@@ -1,5 +1,7 @@
 import { router } from "expo-router";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { isAddress } from "viem";
 import { ContactRow } from "@/components/ContactRow";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -7,12 +9,14 @@ import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
-import { spacing } from "@/design-system/tokens";
+import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
 import type { ContactItem } from "@/features/contacts/useContacts";
 import { useContacts } from "@/features/contacts/useContacts";
 import { useEerc } from "@/features/eerc/useEerc";
+import { profilesRepo } from "@/features/profile/profilesRepo";
+import type { Profile } from "@/features/profile/schema";
 
 export default function Contacts() {
   const { colors } = useTheme();
@@ -20,6 +24,39 @@ export default function Contacts() {
   const me = address?.toLowerCase();
   const contacts = useContacts(me);
   const isWide = useIsWide();
+
+  // Search-to-add (desktop): mirrors add-contact's debounced username search + paste-address detection.
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.startsWith("0x") || q.length < 2) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const r = await profilesRepo.searchByUsername(q);
+        if (!cancelled) setResults(r.filter((p) => p.address !== me));
+      } catch {
+        if (!cancelled) setResults([]);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [query, me]);
+
+  const trimmed = query.trim();
+  const pasteAddress = isAddress(trimmed) ? trimmed.toLowerCase() : null;
+  const searching = trimmed.length > 0;
+
+  // Hands a matched profile / pasted address to the existing add-contact flow (it auto-picks `address`).
+  const openAdd = (addr: string) =>
+    router.push({ pathname: "/add-contact", params: { address: addr } });
 
   // Opens the contact's detail/pay flow — same destination as the mobile ContactRow press.
   const openContact = (item: ContactItem) =>
@@ -31,30 +68,55 @@ export default function Contacts() {
   if (isWide) {
     const list = contacts.data ?? [];
     return (
-      <DesktopScreen
-        title="People"
-        maxWidth={760}
-        head={
-          <Pressable
-            onPress={() => router.push("/add-contact")}
-            style={[styles.addBtn, { backgroundColor: colors.actBlue }]}
-          >
-            <Text style={styles.addBtnLabel}>＋ Add</Text>
-          </Pressable>
-        }
-      >
-        <Pressable
-          onPress={() => router.push("/add-contact")}
-          style={[styles.addByAddress, { borderColor: colors.line }]}
-        >
-          <View style={[styles.addrChip, { backgroundColor: colors.chip }]}>
-            <Text style={[styles.addrChipText, { color: colors.sub }]}>0x</Text>
-          </View>
-          <Text style={[styles.addByLabel, { color: colors.ink }]}>Add by C-Chain address</Text>
-          <Text style={[styles.chevron, { color: colors.sub }]}>›</Text>
-        </Pressable>
+      <DesktopScreen title="People" maxWidth={760}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="@username or paste an address"
+          placeholderTextColor={colors.sub}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[
+            styles.search,
+            { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
+          ]}
+        />
 
-        {list.length === 0 ? (
+        {searching ? (
+          <View style={styles.results}>
+            {pasteAddress ? (
+              <Pressable
+                onPress={() => openAdd(pasteAddress)}
+                style={[styles.resultRow, { backgroundColor: colors.card, borderColor: colors.line }]}
+              >
+                <Avatar name="0 x" size={40} />
+                <Text style={[styles.resultName, { color: colors.ink, flex: 1 }]} numberOfLines={1}>
+                  Add {pasteAddress.slice(0, 6)}…{pasteAddress.slice(-4)}
+                </Text>
+              </Pressable>
+            ) : null}
+            {results.map((p) => (
+              <Pressable
+                key={p.address}
+                onPress={() => openAdd(p.address)}
+                style={[styles.resultRow, { backgroundColor: colors.card, borderColor: colors.line }]}
+              >
+                <Avatar name={p.display_name} size={40} />
+                <View style={styles.cardWho}>
+                  <Text style={[styles.resultName, { color: colors.ink }]} numberOfLines={1}>
+                    {p.display_name}
+                  </Text>
+                  <Text style={[styles.cardHandle, { color: colors.sub }]} numberOfLines={1}>
+                    @{p.username}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+            {!pasteAddress && results.length === 0 ? (
+              <Text style={[styles.empty, { color: colors.sub }]}>No one found.</Text>
+            ) : null}
+          </View>
+        ) : list.length === 0 ? (
           <Text style={[styles.empty, { color: colors.sub }]}>
             {contacts.isLoading
               ? "Loading…"
@@ -130,23 +192,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     lineHeight: 21,
   },
-  // Desktop (≥900px) — mirrors WebPeople in design_handoff_hush/hifi-web.jsx.
-  addBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  addBtnLabel: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "700", color: "#fff" },
-  addByAddress: {
+  // Desktop (≥900px) — search-to-add, then the contacts grid below.
+  search: {
+    fontFamily: fonts.ui,
+    fontSize: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  results: { gap: spacing.sm },
+  resultRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: spacing.lg,
+    padding: 12,
+    borderRadius: radius.button,
+    borderWidth: 1,
   },
-  addrChip: { width: 40, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  addrChipText: { fontFamily: fonts.mono, fontSize: 13, fontWeight: "600" },
-  addByLabel: { flex: 1, fontFamily: fonts.ui, fontSize: 14.5, fontWeight: "600" },
-  chevron: { fontFamily: fonts.ui, fontSize: 20 },
+  resultName: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "600" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   card: {
     width: "48%",

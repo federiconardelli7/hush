@@ -13,14 +13,16 @@ import { requestsRepo } from "@/features/requests/requestsRepo";
 export function NotifyAgainButton({
   requestId,
   lastRemindedAt,
+  createdAt,
 }: {
   requestId: string;
   lastRemindedAt: string | null | undefined;
+  createdAt: string;
 }) {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
-  const cooldown = notifyCooldown(lastRemindedAt);
+  const cooldown = notifyCooldown(lastRemindedAt, createdAt);
 
   const remind = async () => {
     if (cooldown || busy) return;
