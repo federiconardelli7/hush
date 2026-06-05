@@ -23,3 +23,14 @@ console.error = (...args) => {
   }
   originalConsoleError(...args);
 };
+
+// Web only: react-native-web renders TextInput as a real <input>/<textarea>, so
+// focused fields show the browser's default outline — a hard rectangle inside our
+// rounded inputs. Strip it app-wide. (Text inputs always count as :focus-visible,
+// so this can't be scoped to keyboard focus; fields keep their own borders as the
+// focus cue, and the Activity search box additionally highlights its border.)
+if (typeof document !== "undefined" && document.head) {
+  const inputFocusReset = document.createElement("style");
+  inputFocusReset.textContent = "input:focus,textarea:focus{outline:none;}";
+  document.head.appendChild(inputFocusReset);
+}
