@@ -6,7 +6,7 @@ import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
-import { formatRowDate, formatTimeOfDay } from "@/features/payments/dateGroups";
+import { formatRowDateTime, formatTimeOfDay } from "@/features/payments/dateGroups";
 import type { ActivityEntry } from "@/features/payments/useActivity";
 import { displayName } from "@/lib/identity";
 import { formatSignedMoney } from "@/lib/money";
@@ -21,7 +21,7 @@ const CASH_META: Record<
 
 // Column widths shared by the desktop Activity table header (activity.tsx) and
 // the "table" variant below, so headers and cells stay aligned. Note = flex:1.
-export const ACTIVITY_COLS = { who: 230, date: 130, amount: 120 } as const;
+export const ACTIVITY_COLS = { who: 250, amount: 120 } as const;
 
 // One Activity row across all kinds: transfers show the counterparty + note;
 // deposit/withdraw show an icon tile + "Added money" / "Cashed out". The amount
@@ -87,9 +87,14 @@ export function ActivityRow({
       <View style={styles.tRow}>
         <View style={styles.tWho}>
           {leading}
-          <Text style={[styles.name, styles.tName, { color: colors.ink }]} numberOfLines={1}>
-            {name}
-          </Text>
+          <View style={styles.tWhoText}>
+            <Text style={[styles.name, { color: colors.ink }]} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={[styles.time, { color: colors.sub }]} numberOfLines={1}>
+              {formatRowDateTime(item.created_at)}
+            </Text>
+          </View>
         </View>
         <Text
           style={[styles.tNote, { color: note ? colors.sub : colors.line }]}
@@ -97,14 +102,6 @@ export function ActivityRow({
         >
           {note || "—"}
         </Text>
-        <View style={styles.tDate}>
-          <Text style={[styles.tDateLabel, { color: colors.ink }]} numberOfLines={1}>
-            {formatRowDate(item.created_at)}
-          </Text>
-          <Text style={[styles.time, { color: colors.sub }]}>
-            {formatTimeOfDay(item.created_at)}
-          </Text>
-        </View>
         <View style={styles.tAmount}>
           {locked ? (
             <Feather name="lock" size={14.5} color={colors.sub} />
@@ -122,9 +119,11 @@ export function ActivityRow({
         <Avatar name={name} size={42} />
       ) : (
         <View style={[styles.icon, { backgroundColor: colors.chip }]}>
-          <Text style={styles.iconText}>
-            {CASH_META[item.kind as "deposit" | "withdraw"].icon}
-          </Text>
+          <Feather
+            name={CASH_META[item.kind as "deposit" | "withdraw"].icon}
+            size={19}
+            color={colors.ink}
+          />
         </View>
       )}
       <View style={styles.who}>
@@ -167,7 +166,6 @@ export function ActivityRow({
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 13 },
   icon: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-  iconText: { fontSize: 19 },
   who: { flex: 1, minWidth: 0 },
   name: { fontFamily: fonts.ui, fontSize: 14.5, fontWeight: "600" },
   note: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
@@ -185,15 +183,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 11,
   },
-  tName: { flexShrink: 1 },
+  tWhoText: { flexShrink: 1, minWidth: 0 },
   tNote: { flex: 1, fontFamily: fonts.ui, fontSize: 13.5, paddingRight: spacing.md },
-  tDate: {
-    flexBasis: ACTIVITY_COLS.date,
-    flexGrow: 0,
-    flexShrink: 0,
-    alignItems: "flex-start",
-  },
-  tDateLabel: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   tAmount: {
     flexBasis: ACTIVITY_COLS.amount,
     flexGrow: 0,

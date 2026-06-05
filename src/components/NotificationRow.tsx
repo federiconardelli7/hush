@@ -9,7 +9,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import type { NotificationItem } from "@/features/notifications/useNotifications";
-import { formatDateTime, relativeShort } from "@/features/payments/dateGroups";
+import { formatRowDateTime, relativeShort } from "@/features/payments/dateGroups";
 import { useEerc } from "@/features/eerc/useEerc";
 import { displayName } from "@/lib/identity";
 import { formatMoney } from "@/lib/money";
@@ -91,7 +91,7 @@ export function NotificationRow({
   else if (item.note) sub = item.note;
 
   let right: ReactNode = (
-    <Text style={[styles.time, { color: colors.sub }]}>{formatDateTime(item.created_at)}</Text>
+    <Text style={[styles.time, { color: colors.sub }]}>{formatRowDateTime(item.created_at)}</Text>
   );
   if (item.kind === "request") {
     const locked = !eerc.isDecryptionKeySet;

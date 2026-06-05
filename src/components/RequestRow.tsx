@@ -9,6 +9,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
+import { formatRowDateTime } from "@/features/payments/dateGroups";
 import { requestsRepo } from "@/features/requests/requestsRepo";
 import type { RequestItem } from "@/features/requests/useRequests";
 import { displayName } from "@/lib/identity";
@@ -87,30 +88,41 @@ export function RequestRow({
   const statusText =
     (STATUS_LABEL[item.status] ?? item.status) +
     (item.status === "declined" && item.decline_reason ? ` — ${item.decline_reason}` : "");
+  const dateLabel = formatRowDateTime(item.created_at);
+  const dirColor = incoming ? colors.actBlue : colors.positive;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.row}>
         <Avatar name={name} size={42} />
         <View style={styles.who}>
-          <Text style={[styles.line, { color: colors.ink }]} numberOfLines={1}>
-            <Text style={styles.bold}>{name}</Text>
-            <Text style={{ color: colors.sub }}>{incoming ? " requests" : " — you asked"}</Text>
+          <Text style={[styles.line, styles.bold, { color: colors.ink }]} numberOfLines={1}>
+            {name}
           </Text>
           {item.note ? (
             <Text style={[styles.note, { color: colors.ink }]} numberOfLines={1}>
               {item.note}
             </Text>
           ) : null}
-          <Text
-            style={[
-              styles.status,
-              { color: item.status === "fulfilled" ? colors.positive : colors.sub },
-            ]}
-            numberOfLines={1}
-          >
-            {statusText}
-          </Text>
+          <View style={styles.metaRow}>
+            <View style={[styles.dirBadge, { backgroundColor: dirColor + "22" }]}>
+              <Feather
+                name={incoming ? "arrow-down-left" : "arrow-up-right"}
+                size={12}
+                color={dirColor}
+              />
+            </View>
+            <Text style={styles.meta} numberOfLines={1}>
+              <Text style={{ color: dirColor, fontWeight: "700" }}>
+                {incoming ? "You owe" : "Owes you"}
+              </Text>
+              <Text style={{ color: colors.sub }}>{"  ·  "}</Text>
+              <Text style={{ color: item.status === "fulfilled" ? colors.positive : colors.sub }}>
+                {statusText}
+              </Text>
+              <Text style={{ color: colors.sub }}>{`  ·  ${dateLabel}`}</Text>
+            </Text>
+          </View>
         </View>
         {locked ? (
           <Feather name="lock" size={16} color={colors.sub} />
@@ -201,7 +213,9 @@ const styles = StyleSheet.create({
   line: { fontFamily: fonts.ui, fontSize: 14.5 },
   bold: { fontWeight: "700" },
   note: { fontFamily: fonts.ui, fontSize: 12.5, marginTop: 1 },
-  status: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 },
+  meta: { fontFamily: fonts.ui, fontSize: 12, flexShrink: 1 },
+  dirBadge: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   amount: { fontFamily: fonts.ui, fontSize: 16, fontWeight: "700" },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md, flexWrap: "wrap" },
   chip: {
