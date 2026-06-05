@@ -8,8 +8,8 @@ import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
-import { useLastSeen } from "@/features/notifications/seen";
-import { useNotifications } from "@/features/notifications/useNotifications";
+import { useReadIds } from "@/features/notifications/seen";
+import { isUnreadKind, useNotifications } from "@/features/notifications/useNotifications";
 import { formatMoney } from "@/lib/money";
 
 export default function Home() {
@@ -17,9 +17,9 @@ export default function Home() {
   const eerc = useEerc();
   const me = eerc.address?.toLowerCase();
   const notifications = useNotifications(me);
-  const lastSeen = useLastSeen(me);
+  const readIds = useReadIds(me);
   const unread = (notifications.data ?? []).filter(
-    (n) => new Date(n.created_at).getTime() > lastSeen,
+    (n) => isUnreadKind(n.kind) && !readIds.has(n.id),
   ).length;
   const [busy, setBusy] = useState<"register" | "unlock" | null>(null);
   const [error, setError] = useState<string | null>(null);

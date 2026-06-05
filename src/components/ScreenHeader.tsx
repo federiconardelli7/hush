@@ -1,11 +1,13 @@
 import { router } from "expo-router";
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 
-// Back-chevron + centered title header for pushed (non-tab) screens.
-export function ScreenHeader({ title }: { title: string }) {
+// Back-chevron + centered title header for pushed (non-tab) screens. Optional `right`
+// slot for a header action (e.g. "Mark all read"); falls back to a spacer for symmetry.
+export function ScreenHeader({ title, right }: { title: string; right?: ReactNode }) {
   const { colors } = useTheme();
   return (
     <View style={styles.header}>
@@ -18,7 +20,7 @@ export function ScreenHeader({ title }: { title: string }) {
       <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1}>
         {title}
       </Text>
-      <View style={styles.iconBtn} />
+      {right ?? <View style={styles.iconBtn} />}
     </View>
   );
 }

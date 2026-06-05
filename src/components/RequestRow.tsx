@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { NotifyAgainButton } from "@/components/NotifyAgainButton";
 import { Avatar } from "@/design-system/primitives/Avatar";
-import { Button } from "@/design-system/primitives/Button";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -20,9 +20,9 @@ const STATUS_LABEL: Record<string, string> = {
   canceled: "Canceled",
 };
 
-// One request row. The amount is decrypted on-device from the ciphertext addressed
-// to me (behind the unlock gate). Incoming + pending → Pay / Decline (Decline opens
-// an inline confirm with an optional reason); outgoing + pending → Cancel.
+// One request row: avatar · name/status/note · amount, with compact action chips below
+// when pending. Incoming → Pay / Decline (Decline opens an inline reason confirm);
+// outgoing → Notify again / Cancel. Amount decrypts on-device behind the unlock gate.
 export function RequestRow({
   item,
   direction,
@@ -55,19 +55,13 @@ export function RequestRow({
   else if (amount.data == null) amountText = "—";
   else amountText = formatMoney(amount.data);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["requests"] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["requests"] });
 
   const confirmDecline = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await requestsRepo.setStatus(
-        item.id,
-        "declined",
-        undefined,
-        reason.trim() || undefined,
-      );
+      await requestsRepo.setStatus(item.id, "declined", undefined, reason.trim() || undefined);
       await invalidate();
     } finally {
       setBusy(false);
@@ -85,6 +79,10 @@ export function RequestRow({
     });
   };
 
+  const statusText =
+    (STATUS_LABEL[item.status] ?? item.status) +
+    (item.status === "declined" && item.decline_reason ? ` — ${item.decline_reason}` : "");
+
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <View style={styles.row}>
@@ -92,9 +90,7 @@ export function RequestRow({
         <View style={styles.who}>
           <Text style={[styles.line, { color: colors.ink }]} numberOfLines={1}>
             <Text style={styles.bold}>{name}</Text>
-            <Text style={{ color: colors.sub }}>
-              {incoming ? " requests" : " — you asked"}
-            </Text>
+            <Text style={{ color: colors.sub }}>{incoming ? " requests" : " — you asked"}</Text>
           </Text>
           {item.note ? (
             <Text style={[styles.note, { color: colors.ink }]} numberOfLines={1}>
@@ -108,10 +104,7 @@ export function RequestRow({
             ]}
             numberOfLines={1}
           >
-            {STATUS_LABEL[item.status] ?? item.status}
-            {item.status === "declined" && item.decline_reason
-              ? ` — ${item.decline_reason}`
-              : ""}
+            {statusText}
           </Text>
         </View>
         <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
@@ -121,30 +114,39 @@ export function RequestRow({
         <View style={styles.actions}>
           {incoming ? (
             <>
-              <Button label="Pay" variant="primary" style={styles.action} onPress={pay} />
-              <Button
-                label="Decline"
-                variant="secondary"
-                style={styles.action}
-                onPress={() => setConfirming(true)}
-              />
+              <Pressable onPress={pay} disabled={amount.data == null}>
+                <Text
+                  style={[
+                    styles.chip,
+                    styles.solid,
+                    { backgroundColor: colors.actBlue, opacity: amount.data == null ? 0.5 : 1 },
+                  ]}
+                >
+                  Pay
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirming(true)}>
+                <Text style={[styles.chip, styles.outline, { borderColor: colors.line, color: colors.ink }]}>
+                  Decline
+                </Text>
+              </Pressable>
             </>
           ) : (
-            <Button
-              label="Cancel request"
-              variant="secondary"
-              style={styles.action}
-              onPress={cancel}
-            />
+            <>
+              <NotifyAgainButton requestId={item.id} lastRemindedAt={item.last_reminded_at} />
+              <Pressable onPress={cancel}>
+                <Text style={[styles.chip, styles.outline, { borderColor: colors.line, color: colors.sub }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+            </>
           )}
         </View>
       ) : null}
 
       {pending && confirming ? (
         <View style={styles.confirm}>
-          <Text style={[styles.confirmTitle, { color: colors.ink }]}>
-            Decline this request?
-          </Text>
+          <Text style={[styles.confirmTitle, { color: colors.ink }]}>Decline this request?</Text>
           <TextInput
             value={reason}
             onChangeText={setReason}
@@ -157,21 +159,21 @@ export function RequestRow({
             ]}
           />
           <View style={styles.actions}>
-            <Button
-              label={busy ? "Declining…" : "Confirm decline"}
-              variant="primary"
-              style={styles.action}
-              onPress={confirmDecline}
-            />
-            <Button
-              label="Keep"
-              variant="secondary"
-              style={styles.action}
+            <Pressable onPress={confirmDecline}>
+              <Text style={[styles.chip, styles.solid, { backgroundColor: colors.actBlue }]}>
+                {busy ? "Declining…" : "Confirm"}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => {
                 setConfirming(false);
                 setReason("");
               }}
-            />
+            >
+              <Text style={[styles.chip, styles.outline, { borderColor: colors.line, color: colors.ink }]}>
+                Keep
+              </Text>
+            </Pressable>
           </View>
         </View>
       ) : null}
@@ -180,16 +182,26 @@ export function RequestRow({
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.card, padding: 16, marginBottom: spacing.md },
-  row: { flexDirection: "row", alignItems: "center", gap: 13 },
+  card: { borderRadius: radius.card, padding: 14, marginBottom: spacing.sm },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
   who: { flex: 1, minWidth: 0 },
   line: { fontFamily: fonts.ui, fontSize: 14.5 },
   bold: { fontWeight: "700" },
   note: { fontFamily: fonts.ui, fontSize: 12.5, marginTop: 1 },
   status: { fontFamily: fonts.ui, fontSize: 12, marginTop: 1 },
-  amount: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "700" },
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
-  action: { flex: 1 },
+  amount: { fontFamily: fonts.ui, fontSize: 16, fontWeight: "700" },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md, flexWrap: "wrap" },
+  chip: {
+    fontFamily: fonts.ui,
+    fontSize: 12.5,
+    fontWeight: "700",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: radius.button,
+    overflow: "hidden",
+  },
+  solid: { color: "#fff" },
+  outline: { borderWidth: 1.5 },
   confirm: { marginTop: spacing.md, gap: spacing.sm },
   confirmTitle: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
   reasonInput: {

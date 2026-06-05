@@ -26,6 +26,7 @@ export type MoneyRequest = {
   decline_reason: string | null;
   declined_at: string | null;
   note: string | null;
+  last_reminded_at?: string | null;
   created_at: string;
 };
 
@@ -57,7 +58,9 @@ export const requestsRepo = {
     const a = address.toLowerCase();
     const { data, error } = await supabase
       .from("requests")
-      .select(COLUMNS)
+      // select * (not COLUMNS) so a not-yet-applied last_reminded_at migration can't
+      // break this query — the field is simply absent until the column lands.
+      .select("*")
       .or(`requester_address.eq.${a},requestee_address.eq.${a}`)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -89,6 +92,19 @@ export const requestsRepo = {
       patch.declined_at = new Date().toISOString();
     }
     const { error } = await supabase.from("requests").update(patch).eq("id", id);
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
+
+  // "Notify again": re-surface a still-pending request in the requestee's inbox. We only
+  // stamp the time (24h cooldown enforced client-side); the requestee's notifications use
+  // max(created_at, last_reminded_at), so the request bumps back to the top as new.
+  async remind(id: string): Promise<void> {
+    const { error } = await supabase
+      .from("requests")
+      .update({ last_reminded_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       throw new Error(error.message);
     }

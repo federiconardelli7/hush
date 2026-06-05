@@ -53,3 +53,23 @@ export function formatDateTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+// Short relative time, e.g. "just now", "5m ago", "3h ago", "2d ago".
+export function relativeShort(iso: string): string {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+// "Notify again" cooldown: returns "Notify in Xh" while a request was reminded < 24h
+// ago, else null (a fresh nudge is allowed). null when never reminded.
+export function notifyCooldown(lastRemindedAt: string | null | undefined): string | null {
+  if (!lastRemindedAt) return null;
+  const left = new Date(lastRemindedAt).getTime() + 24 * 3_600_000 - Date.now();
+  if (left <= 0) return null;
+  const h = Math.ceil(left / 3_600_000);
+  return h >= 1 ? `Notify in ${h}h` : "Notify soon";
+}

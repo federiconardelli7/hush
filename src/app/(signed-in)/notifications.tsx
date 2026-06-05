@@ -1,40 +1,84 @@
-import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text } from "react-native";
+import { useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { NotificationRow } from "@/components/NotificationRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
-import { spacing } from "@/design-system/tokens";
+import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
-import { getLastSeen, markSeen } from "@/features/notifications/seen";
-import { useNotifications } from "@/features/notifications/useNotifications";
+import { markRead, useReadIds } from "@/features/notifications/seen";
+import {
+  isUnreadKind,
+  useNotifications,
+  type NotificationItem,
+} from "@/features/notifications/useNotifications";
 
 export default function Notifications() {
   const { colors } = useTheme();
-  const { address } = useEerc();
-  const me = address?.toLowerCase();
+  const eerc = useEerc();
+  const me = eerc.address?.toLowerCase();
   const notifications = useNotifications(me);
-
-  // Freeze the seen-at-open timestamp so this view keeps its "new" highlights, but
-  // mark seen on open so the Home bell badge clears.
-  const [seenAtOpen] = useState(() => (me ? getLastSeen(me) : 0));
-  useEffect(() => {
-    if (me) markSeen(me);
-  }, [me]);
+  const readIds = useReadIds(me);
+  const [unlocking, setUnlocking] = useState(false);
 
   const items = notifications.data ?? [];
+  const isUnread = (n: NotificationItem) => isUnreadKind(n.kind) && !readIds.has(n.id);
+  const hasUnread = items.some(isUnread);
+  const lockedAmounts =
+    eerc.isRegistered && !eerc.isDecryptionKeySet && items.some((i) => i.kind === "request");
+
+  // Unread persists until you tap a row or "Mark all read" — a standard inbox (no
+  // auto-clear, since router.push keeps this screen mounted and that hid the button).
+  const markAllRead = () => markRead(me, items.map((i) => i.id));
+
+  const unlock = async () => {
+    if (unlocking) return;
+    setUnlocking(true);
+    try {
+      await eerc.enableDecryption();
+    } catch {
+      // surfaced by the ErrorBoundary
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   return (
     <ScreenContainer>
-      <ScreenHeader title="Notifications" />
+      <ScreenHeader
+        title="Notifications"
+        right={
+          hasUnread ? (
+            <Pressable onPress={markAllRead}>
+              <Text style={[styles.markAll, { color: colors.actBlue }]}>Mark all read</Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      {lockedAmounts ? (
+        <View style={[styles.unlock, { backgroundColor: colors.card }]}>
+          <Text style={[styles.unlockText, { color: colors.sub }]}>
+            Unlock to reveal request amounts — one signature, never leaves this device.
+          </Text>
+          <Button
+            label={unlocking ? "Unlocking…" : "Show amounts"}
+            variant="primary"
+            onPress={unlock}
+          />
+        </View>
+      ) : null}
+
       <FlatList
         data={items}
-        keyExtractor={(n) => `${n.kind}:${n.id}`}
+        keyExtractor={(n) => n.id}
         renderItem={({ item }) => (
           <NotificationRow
             item={item}
-            unread={new Date(item.created_at).getTime() > seenAtOpen}
+            unread={isUnread(item)}
+            onRead={() => markRead(me, [item.id])}
           />
         )}
         contentContainerStyle={styles.list}
@@ -51,6 +95,15 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
+  markAll: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
+  unlock: {
+    borderRadius: radius.card,
+    padding: 16,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  unlockText: { fontFamily: fonts.ui, fontSize: 13, lineHeight: 19 },
   list: { paddingTop: spacing.sm, paddingBottom: spacing.xl },
   empty: {
     fontFamily: fonts.ui,
