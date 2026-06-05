@@ -68,7 +68,7 @@ export default function RequestAmount() {
 
   if (done) {
     return (
-      <ScreenContainer>
+      <ScreenContainer maxWidth={460}>
         <View style={styles.successWrap}>
           <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
           <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
@@ -77,19 +77,19 @@ export default function RequestAmount() {
           <Text style={[styles.successSub, { color: colors.sub }]}>
             🔒 The amount is encrypted — only you two can read it.
           </Text>
+          <Button
+            label="Done"
+            variant="primary"
+            onPress={() => router.replace("/home")}
+            style={styles.successCta}
+          />
         </View>
-        <Button
-          label="Done"
-          variant="primary"
-          onPress={() => router.replace("/home")}
-          style={styles.cta}
-        />
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={460}>
       <ScreenHeader title={`Request ${name ?? ""}`.trim()} />
 
       <View style={styles.amountWrap}>
@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
   keypadWrap: { marginTop: "auto", paddingTop: spacing.md },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm },
+  successCta: { alignSelf: "stretch", marginTop: spacing.lg },
   footnote: { fontFamily: fonts.ui, fontSize: 12, textAlign: "center", paddingVertical: spacing.md },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
   check: { fontSize: 56, fontWeight: "800" },

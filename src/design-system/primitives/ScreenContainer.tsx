@@ -17,7 +17,16 @@ export function ScreenContainer({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.outer, { backgroundColor: colors.bg, paddingTop: insets.top + spacing.lg }]}>
+    <View
+      style={[
+        styles.outer,
+        {
+          backgroundColor: colors.bg,
+          paddingTop: insets.top + spacing.lg,
+          paddingBottom: insets.bottom + spacing.lg,
+        },
+      ]}
+    >
       <View style={[styles.inner, { maxWidth }]}>{children}</View>
     </View>
   );
