@@ -11,7 +11,15 @@ import { isUnreadKind, useNotifications } from "@/features/notifications/useNoti
 // Desktop per-screen top bar: page title + optional `head` slot + a bell (with unread
 // dot) + a one-click light/dark toggle (Settings is reachable via the sidebar profile
 // card, so the gear was redundant). Bell/unread mirrors the Home logic.
-export function WebTopBar({ title, head }: { title: string; head?: ReactNode }) {
+export function WebTopBar({
+  title,
+  head,
+  back,
+}: {
+  title: string;
+  head?: ReactNode;
+  back?: boolean;
+}) {
   const { colors, isDark, toggle } = useTheme();
   const { address } = useEerc();
   const me = address?.toLowerCase();
@@ -23,6 +31,14 @@ export function WebTopBar({ title, head }: { title: string; head?: ReactNode }) 
 
   return (
     <View style={[styles.bar, { borderBottomColor: colors.line }]}>
+      {back ? (
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.line }]}
+        >
+          <Feather name="chevron-left" size={20} color={colors.ink} />
+        </Pressable>
+      ) : null}
       <Text style={[styles.title, { color: colors.ink }]}>{title}</Text>
       <View style={styles.right}>
         {head}
@@ -53,6 +69,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingVertical: 20,
     borderBottomWidth: 1,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
   },
   title: { fontFamily: fonts.ui, fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   right: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 10 },

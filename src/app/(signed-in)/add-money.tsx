@@ -2,12 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
+import { useIsWide } from "@/design-system/useResponsive";
 import { useEerc } from "@/features/eerc/useEerc";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
 
@@ -46,6 +48,75 @@ export default function AddMoney() {
       setBusy(false);
     }
   };
+
+  const isWide = useIsWide();
+
+  if (isWide) {
+    const desktopBody = (
+      <>
+        <View style={styles.amountWrap}>
+          <Text style={[typeScale.balanceHero, styles.amount, { color: colors.ink }]}>
+            <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
+            {amount || "0"}
+          </Text>
+          <Text style={[styles.caption, { color: colors.sub }]}>
+            Wrapped into your private balance. Amounts stay encrypted.
+          </Text>
+        </View>
+
+        <View style={styles.presets}>
+          {PRESETS.map((v) => {
+            const selected = amount === v;
+            return (
+              <Pressable
+                key={v}
+                onPress={() => setAmount(v)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: selected ? colors.ink : colors.chip },
+                ]}
+              >
+                <Text
+                  style={[styles.chipText, { color: selected ? colors.bg : colors.sub }]}
+                >
+                  {presetLabel(v)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
+          <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
+            <Text style={{ fontSize: 17 }}>🧪</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.methodSub, { color: colors.sub }]}>Funding · test tokens</Text>
+            <Text style={[styles.methodMain, { color: colors.ink }]}>Fuji testnet</Text>
+          </View>
+        </View>
+
+        <View style={styles.keypadWrapWide}>
+          <Keypad onKey={(k) => setAmount((a) => applyAmountKey(a, k))} />
+        </View>
+
+        {error ? (
+          <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
+        ) : null}
+        <Button
+          label={busy ? "Adding…" : value > 0 ? `Add $${amount}` : "Add money"}
+          variant="primary"
+          onPress={onAdd}
+          style={styles.ctaWide}
+        />
+      </>
+    );
+    return (
+      <DesktopScreen title="Add money" back center maxWidth={460}>
+        {desktopBody}
+      </DesktopScreen>
+    );
+  }
 
   return (
     <ScreenContainer maxWidth={520}>
@@ -144,6 +215,8 @@ const styles = StyleSheet.create({
   methodSub: { fontFamily: fonts.ui, fontSize: 12 },
   methodMain: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.lg },
+  keypadWrapWide: { marginTop: spacing.lg },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm, marginBottom: spacing.lg },
+  ctaWide: { marginTop: spacing.lg },
 });

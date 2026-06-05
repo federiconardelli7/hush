@@ -2,12 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
+import { useIsWide } from "@/design-system/useResponsive";
 import { useEerc } from "@/features/eerc/useEerc";
 import { AUDIENCES, paymentsRepo, type Audience } from "@/features/payments/paymentsRepo";
 import { requestsRepo } from "@/features/requests/requestsRepo";
@@ -87,7 +89,28 @@ export default function PayAmount() {
     }
   };
 
+  const isWide = useIsWide();
+
   if (doneTx) {
+    if (isWide) {
+      return (
+        <DesktopScreen title="Pay" center maxWidth={460}>
+          <View style={styles.successWrap}>
+            <Text style={[styles.check, { color: colors.positive }]}>✓</Text>
+            <Text style={[typeScale.screenTitle, { color: colors.ink }]}>
+              Sent to {name ?? "them"}
+            </Text>
+            <Text style={[styles.successSub, { color: colors.sub }]}>
+              🔒 Only you two can see the amount.
+            </Text>
+            <Text style={[styles.tx, { color: colors.sub }]} selectable>
+              {doneTx.slice(0, 20)}…
+            </Text>
+            <Button label="Done" variant="primary" onPress={() => router.replace("/feed")} style={styles.successCta} />
+          </View>
+        </DesktopScreen>
+      );
+    }
     return (
       <ScreenContainer maxWidth={460}>
         <View style={styles.successWrap}>
@@ -104,6 +127,81 @@ export default function PayAmount() {
           <Button label="Done" variant="primary" onPress={() => router.replace("/feed")} style={styles.successCta} />
         </View>
       </ScreenContainer>
+    );
+  }
+
+  if (isWide) {
+    return (
+      <DesktopScreen title={`Pay ${name ?? ""}`.trim()} back center maxWidth={460}>
+        <View style={styles.amountWrap}>
+          <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
+            <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
+            {amount || "0"}
+          </Text>
+          <Text style={[styles.avail, { color: colors.sub }]}>
+            Available ${parsedBalance || "0"}
+          </Text>
+        </View>
+
+        <View style={styles.audience}>
+          {AUDIENCES.map((a) => {
+            const on = audience === a;
+            return (
+              <Pressable
+                key={a}
+                onPress={() => setAudience(a)}
+                style={[
+                  styles.aChip,
+                  {
+                    backgroundColor: on ? "rgba(37,99,235,0.12)" : colors.chip,
+                    borderColor: on ? colors.actBlue : "transparent",
+                  },
+                ]}
+              >
+                <Text style={[styles.aText, { color: on ? colors.actBlue : colors.sub }]}>
+                  {a === "private" ? "🔒 " : ""}
+                  {AUDIENCE_LABEL[a]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <TextInput
+          value={memo}
+          onChangeText={setMemo}
+          placeholder="What's it for?"
+          placeholderTextColor={colors.sub}
+          maxLength={100}
+          style={[
+            styles.memo,
+            { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
+          ]}
+        />
+
+        <View style={[styles.keypadWrap, styles.keypadWrapWide]}>
+          <Keypad onKey={(k) => setAmount((x) => applyAmountKey(x, k))} />
+        </View>
+
+        {error ? <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text> : null}
+        <Button
+          label={
+            busy
+              ? "Sending…"
+              : !balanceReady
+                ? "Loading your balance…"
+                : value > 0
+                  ? `Pay $${amount}`
+                  : "Enter an amount"
+          }
+          variant="primary"
+          onPress={onPay}
+          style={styles.cta}
+        />
+        <Text style={[styles.footnote, { color: colors.sub }]}>
+          🛡 Encrypted · amount stays private
+        </Text>
+      </DesktopScreen>
     );
   }
 
@@ -216,6 +314,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.md },
+  keypadWrapWide: { marginTop: spacing.lg },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },
   cta: { marginTop: spacing.sm },
   successCta: { alignSelf: "stretch", marginTop: spacing.lg },

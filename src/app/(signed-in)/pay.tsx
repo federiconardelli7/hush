@@ -11,11 +11,13 @@ import {
 } from "react-native";
 import { isAddress } from "viem";
 import { ContactRow } from "@/components/ContactRow";
+import { DesktopScreen } from "@/components/DesktopScreen";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
+import { useIsWide } from "@/design-system/useResponsive";
 import { useContacts } from "@/features/contacts/useContacts";
 import { useEerc } from "@/features/eerc/useEerc";
 import { profilesRepo } from "@/features/profile/profilesRepo";
@@ -67,6 +69,117 @@ export default function Pay() {
 
   const trimmed = query.trim();
   const pasteAddress = isAddress(trimmed) ? trimmed : null;
+
+  const isWide = useIsWide();
+
+  if (isWide) {
+    const contactList = contacts.data ?? [];
+    const resultList = results.filter((p) => p.address !== me);
+    const desktopBody = (
+      <>
+        <View style={styles.modeRow}>
+          {([false, true] as const).map((req) => {
+            const on = req === isRequest;
+            return (
+              <Pressable
+                key={req ? "request" : "pay"}
+                onPress={() => setIsRequest(req)}
+                style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
+              >
+                <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
+                  {req ? "Request" : "Pay"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="@username or paste an address"
+          placeholderTextColor={colors.sub}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[
+            styles.input,
+            { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line },
+          ]}
+        />
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/scan",
+              params: { intent: "pay", mode: isRequest ? "request" : "pay" },
+            })
+          }
+          style={styles.scan}
+        >
+          <Text style={[styles.scanText, { color: colors.actBlue }]}>📷  Scan a code</Text>
+        </Pressable>
+
+        {trimmed.length === 0 ? (
+          <View style={styles.list}>
+            {contactList.length > 0 ? (
+              <Text style={[styles.section, { color: colors.sub }]}>Your contacts</Text>
+            ) : null}
+            {contactList.map((item) => (
+              <ContactRow
+                key={item.contact_address}
+                item={item}
+                onPress={() => goAmount(item.contact_address, item.nickname)}
+              />
+            ))}
+          </View>
+        ) : (
+          <>
+            {pasteAddress ? (
+              <Pressable
+                onPress={() =>
+                  goAmount(pasteAddress, `${pasteAddress.slice(0, 6)}…${pasteAddress.slice(-4)}`)
+                }
+                style={[styles.item, { backgroundColor: colors.card, borderColor: colors.line }]}
+              >
+                <Avatar name="0 x" size={40} />
+                <Text style={[styles.name, { color: colors.ink, flex: 1 }]} numberOfLines={1}>
+                  {isRequest ? "Request from" : "Pay"} {pasteAddress.slice(0, 10)}…
+                  {pasteAddress.slice(-6)}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {searching ? (
+              <ActivityIndicator color={colors.actBlue} style={styles.spinner} />
+            ) : null}
+
+            <View style={styles.list}>
+              {resultList.map((item) => {
+                const name = nickByAddr.get(item.address) ?? item.display_name;
+                return (
+                  <Pressable
+                    key={item.address}
+                    onPress={() => goAmount(item.address, name)}
+                    style={[styles.item, { backgroundColor: colors.card, borderColor: colors.line }]}
+                  >
+                    <Avatar name={name} size={40} />
+                    <Text style={styles.who}>
+                      <Text style={[styles.name, { color: colors.ink }]}>{name}</Text>
+                      {"\n"}
+                      <Text style={[styles.handle, { color: colors.sub }]}>@{item.username}</Text>
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </>
+    );
+    return (
+      <DesktopScreen title="Pay or request" back maxWidth={560}>
+        {desktopBody}
+      </DesktopScreen>
+    );
+  }
 
   return (
     <ScreenContainer>
