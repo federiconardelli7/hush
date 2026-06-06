@@ -43,7 +43,17 @@ export function ActivityRow({
     queryKey: ["tx-amount", item.tx_hash],
     enabled: eerc.isDecryptionKeySet,
     staleTime: Infinity,
-    queryFn: () => eerc.decryptAmount(item.tx_hash, item.kind),
+    // A just-sent tx can lag the RPC when the row first renders, so decryptAmount
+    // returns null transiently. Throw on null so React Query retries instead of
+    // caching the empty result forever (that was the "amount shows — until you
+    // refresh" bug). A genuinely un-decryptable row settles to "—" after retries.
+    retry: 4,
+    retryDelay: 1500,
+    queryFn: async () => {
+      const value = await eerc.decryptAmount(item.tx_hash, item.kind);
+      if (value == null) throw new Error("amount not ready");
+      return value;
+    },
   });
 
   const memo = useQuery({
