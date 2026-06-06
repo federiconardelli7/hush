@@ -52,11 +52,18 @@ export function useQrScanner(active: boolean, onResult: (text: string) => void) 
           return;
         }
         const reader = new BrowserQRCodeReader();
-        controls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
-          if (result) {
-            onResultRef.current(result.getText());
-          }
-        });
+        // Prefer the rear camera on phones — the browser default is the front/
+        // selfie cam, useless for scanning someone else's code. `ideal` (not
+        // `exact`) so a device with only a front camera (most laptops) still works.
+        controls = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" } }, audio: false },
+          video,
+          (result) => {
+            if (result) {
+              onResultRef.current(result.getText());
+            }
+          },
+        );
         if (cancelled) {
           controls.stop();
           return;
