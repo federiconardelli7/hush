@@ -11,6 +11,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { useIsWide } from "@/design-system/useResponsive";
 import { fonts, typeScale } from "@/design-system/typography";
+import { clearDecryptionKey } from "@/features/eerc/session";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
 
@@ -55,6 +56,13 @@ export default function Me() {
   const { logout } = usePrivy();
   const { address, supabaseStatus, supabaseBoundWallet, supabaseError } = useEerc();
   const profile = useProfile(address ?? null);
+
+  // Sign out: wipe the locally-cached decryption key first (it now persists in
+  // sessionStorage — see eerc/session.ts), then end the Privy session.
+  const handleSignOut = () => {
+    if (address) clearDecryptionKey(address);
+    void logout();
+  };
 
   const bound =
     supabaseStatus === "ready" && supabaseBoundWallet === address?.toLowerCase();
@@ -116,9 +124,7 @@ export default function Me() {
       <Button
         label="Sign out"
         variant="ghost"
-        onPress={() => {
-          void logout();
-        }}
+        onPress={handleSignOut}
         style={styles.signout}
       />
     </>
@@ -205,9 +211,7 @@ export default function Me() {
         <Button
           label="Sign out"
           variant="ghost"
-          onPress={() => {
-            void logout();
-          }}
+          onPress={handleSignOut}
           style={styles.signout}
         />
       </ScrollView>

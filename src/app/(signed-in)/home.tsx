@@ -1,6 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { ActivityRow } from "@/components/ActivityRow";
 import { BalanceCard } from "@/components/BalanceCard";
@@ -31,6 +31,7 @@ export default function Home() {
   ).length;
   const [busy, setBusy] = useState<"register" | "unlock" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const autoUnlockRef = useRef<string | undefined>(undefined);
 
   const run = async (kind: "register" | "unlock") => {
     if (busy) return;
@@ -44,6 +45,18 @@ export default function Home() {
       setBusy(null);
     }
   };
+
+  // With Privy's signature popups silenced (showWalletUIs:false), a fresh
+  // tab/session can silently re-derive the decryption key instead of making the
+  // user tap "Show balance". Fires once per address; if it fails (e.g. blocked
+  // storage) the manual gate below stays as the fallback. Registration stays
+  // explicit — we never auto-register.
+  useEffect(() => {
+    if (!eerc.isRegistered || eerc.isDecryptionKeySet) return;
+    if (autoUnlockRef.current === me) return;
+    autoUnlockRef.current = me;
+    void run("unlock");
+  }, [eerc.isRegistered, eerc.isDecryptionKeySet, me]);
 
   if (eerc.status === "preparing") {
     return (

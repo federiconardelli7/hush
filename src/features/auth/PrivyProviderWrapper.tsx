@@ -22,6 +22,12 @@ export function PrivyProviderWrapper({ children }: { children: ReactNode }) {
         // Auto-create the EOA on first login; no seed phrase is shown to the user.
         embeddedWallets: {
           ethereum: { createOnLogin: "users-without-wallets" },
+          // The embedded wallet is already unlocked by the user's email-OTP
+          // session, and Hush has its own in-app confirmation screens (Pay /
+          // Cash out), so Privy's per-action signature/tx modals are redundant.
+          // Off for a web2 feel; the wallet still signs client-side — no key or
+          // privacy impact (the decryption key stays client-held). See D-33.
+          showWalletUIs: false,
         },
         defaultChain: avalancheFuji,
         supportedChains: [avalancheFuji],
