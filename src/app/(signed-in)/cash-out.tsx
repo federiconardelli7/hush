@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
@@ -16,6 +16,7 @@ import { DEFAULT_TOKEN } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
 import { formatTokenAmount } from "@/lib/money";
+import { friendlyTxError } from "@/lib/txError";
 
 export default function CashOut() {
   const { colors } = useTheme();
@@ -26,6 +27,8 @@ export default function CashOut() {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setError(null), [token, amount]);
 
   const bal = eerc.balanceFor(token);
   const available = Number(bal.parsed || "0");
@@ -50,7 +53,12 @@ export default function CashOut() {
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
       router.back();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't cash out.");
+      setError(
+        friendlyTxError(err, {
+          insufficient: "That's more than your balance.",
+          fallback: "Couldn't cash out. Please try again.",
+        }),
+      );
     } finally {
       setBusy(false);
     }
@@ -71,6 +79,10 @@ export default function CashOut() {
   if (isWide) {
     const desktopBody = (
       <>
+        <View style={styles.selectorWrap}>
+          <TokenPicker value={token} onChange={setToken} label="Cash out" />
+        </View>
+
         <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text
             style={[
@@ -85,10 +97,6 @@ export default function CashOut() {
           <Text style={[styles.caption, { color: colors.sub }]}>
             Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
-        </View>
-
-        <View style={styles.selectorWrap}>
-          <TokenPicker value={token} onChange={setToken} label="Cash out" />
         </View>
 
         <View style={styles.presets}>
@@ -167,6 +175,10 @@ export default function CashOut() {
         <View style={styles.iconBtn} />
       </View>
 
+      <View style={styles.selectorWrap}>
+        <TokenPicker value={token} onChange={setToken} label="Cash out" />
+      </View>
+
       <View style={styles.amountWrap}>
         <Text
           style={[
@@ -181,10 +193,6 @@ export default function CashOut() {
         <Text style={[styles.caption, { color: colors.sub }]}>
           Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
-      </View>
-
-      <View style={styles.selectorWrap}>
-        <TokenPicker value={token} onChange={setToken} label="Cash out" />
       </View>
 
       <View style={styles.presets}>

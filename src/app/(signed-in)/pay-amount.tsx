@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
@@ -17,6 +17,7 @@ import { useEerc } from "@/features/eerc/useEerc";
 import { AUDIENCES, paymentsRepo, type Audience } from "@/features/payments/paymentsRepo";
 import { requestsRepo } from "@/features/requests/requestsRepo";
 import { formatTokenAmount } from "@/lib/money";
+import { friendlyTxError } from "@/lib/txError";
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
   friends: "Friends",
@@ -44,6 +45,9 @@ export default function PayAmount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneTx, setDoneTx] = useState<string | null>(null);
+
+  // Clear any prior error as soon as the user picks a new token or edits the amount.
+  useEffect(() => setError(null), [token, amount]);
 
   // Start fresh each time the screen is opened (it's a single reused route, so
   // a prior success/amount would otherwise linger on the next payment).
@@ -89,7 +93,12 @@ export default function PayAmount() {
       }
       setDoneTx(transactionHash);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send the payment.");
+      setError(
+        friendlyTxError(err, {
+          insufficient: "Not enough balance to send that amount.",
+          fallback: "Couldn't send the payment. Please try again.",
+        }),
+      );
     } finally {
       setBusy(false);
     }
@@ -145,6 +154,10 @@ export default function PayAmount() {
   if (isWide) {
     return (
       <DesktopScreen title={`Pay ${name ?? ""}`.trim()} back center maxWidth={460}>
+        <View style={styles.tokenWrapTop}>
+          <TokenPicker value={token} onChange={setToken} label="Pay with" />
+        </View>
+
         <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
@@ -153,10 +166,6 @@ export default function PayAmount() {
           <Text style={[styles.avail, { color: colors.sub }]}>
             Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
-        </View>
-
-        <View style={styles.tokenWrap}>
-          <TokenPicker value={token} onChange={setToken} label="Pay with" />
         </View>
 
         <View style={styles.audience}>
@@ -240,6 +249,10 @@ export default function PayAmount() {
         <View style={styles.iconBtn} />
       </View>
 
+      <View style={styles.tokenWrapTop}>
+        <TokenPicker value={token} onChange={setToken} label="Pay with" />
+      </View>
+
       <View style={styles.amountWrap}>
         <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
@@ -248,10 +261,6 @@ export default function PayAmount() {
         <Text style={[styles.avail, { color: colors.sub }]}>
           Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
-      </View>
-
-      <View style={styles.tokenWrap}>
-        <TokenPicker value={token} onChange={setToken} label="Pay with" />
       </View>
 
       <View style={styles.audience}>
@@ -330,7 +339,7 @@ const styles = StyleSheet.create({
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },
   avail: { fontFamily: fonts.ui, fontSize: 13 },
-  tokenWrap: { marginTop: spacing.lg },
+  tokenWrapTop: { marginTop: spacing.xs, marginBottom: spacing.sm },
   audience: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.lg },
   aChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
   aChipRow: { flexDirection: "row", alignItems: "center", gap: 4 },
