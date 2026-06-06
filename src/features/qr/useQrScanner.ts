@@ -81,6 +81,9 @@ export function useQrScanner(active: boolean, onResult: (text: string) => void) 
     return () => {
       cancelled = true;
       controls?.stop();
+      // controls.stop() ends zxing's decode loop but doesn't release the camera;
+      // stop the MediaStream tracks so the camera + its indicator light turn off.
+      (video.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop());
       video.srcObject = null;
       video.parentNode?.removeChild(video);
     };
