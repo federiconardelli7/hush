@@ -38,14 +38,18 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/node": "^25.9.1",
     "@types/react": "~19.2.2",
+    "@vercel/node": "^5.8.12",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "faucet": "node --env-file=.env --import tsx scripts/faucet.ts"
   },
   "private": true
 }

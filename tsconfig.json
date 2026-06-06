@@ -13,7 +13,10 @@
   "exclude": [
     "node_modules",
     "dist",
-    ".expo"
+    ".expo",
+    "api",
+    "server",
+    "scripts"
   ],
   "include": [
     "**/*.ts",

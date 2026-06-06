@@ -1,7 +1,9 @@
 import { erc20Abi, parseEther, type PublicClient } from "viem";
 import { CONTRACTS } from "@/features/eerc/config/contracts";
 
-const FAUCET_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "http://localhost:8788";
+// Prod: same-origin Vercel `/api` functions. Local dev: set EXPO_PUBLIC_FAUCET_URL
+// to the dev faucet (http://localhost:8788).
+const FAUCET_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "/api";
 // Top up whenever the wallet is below 0.05 AVAX — matches the faucet server's
 // own skip threshold, so anything under 0.05 gets a drip.
 const MIN_GAS = parseEther("0.05");

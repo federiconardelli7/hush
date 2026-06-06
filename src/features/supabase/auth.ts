@@ -1,7 +1,9 @@
 import type { WalletClient } from "viem";
 import { setSupabaseToken } from "@/features/supabase/client";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "http://localhost:8788";
+// Prod: same-origin Vercel `/api` functions. Local dev: set EXPO_PUBLIC_FAUCET_URL
+// to the dev faucet (http://localhost:8788).
+const BACKEND_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "/api";
 
 // Binds the embedded wallet to Supabase: prove control of the EOA by signing a
 // single-use server nonce, then exchange the signature for a Supabase JWT that
@@ -35,6 +37,9 @@ export async function signInToSupabase(
     const body = (await tokenRes.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Auth token request failed (${tokenRes.status}).`);
   }
+  // Note: the minted JWT expires in ~1h and is not auto-refreshed — after that, writes
+  // fail until the next sign-in (e.g. page reload re-runs this). Acceptable for the demo;
+  // a refresh-before-expiry pass belongs with key persistence (F-2).
   const { token } = (await tokenRes.json()) as { token: string };
   setSupabaseToken(token);
 }
