@@ -15,6 +15,8 @@ export const CONTRACTS = {
   registrar: "0xD2Ad4aAA9D09A720025ECe959eCa98bA1EE4958e",
   // Public ERC20 wrapped via deposit (the demo "money" — TEST, 18 dp, open-mint).
   erc20: "0xb636Caab9650eE6300436185551EEcadbd5c3079",
+  // Real Circle USDC on Fuji (6 dp) — F-12 multi-token (Phase 2). Verified on-chain.
+  usdc: "0x5425890298aED601595a70AB815c96711a31Bc65",
   babyJubJub: "0xEFA2c8700c569Ad280823Fd1DE0c5680Ab626403",
   verifiers: {
     registration: "0xE2881af0F0DbA27F4BC269a74f74dcaffCe091B1",

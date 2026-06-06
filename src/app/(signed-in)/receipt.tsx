@@ -56,7 +56,16 @@ export default function Receipt() {
     queryKey: ["tx-amount", txHash],
     enabled: eerc.isDecryptionKeySet && Boolean(txHash),
     staleTime: Infinity,
-    queryFn: () => eerc.decryptAmount(txHash, kind),
+    // Shares the ["tx-amount", txHash] cache with ActivityRow, so it must return the
+    // same shape (the amount string) and retry-on-null behaviour. (decryptAmount now
+    // returns { amount, token }; we keep the string here.)
+    retry: 4,
+    retryDelay: 1500,
+    queryFn: async () => {
+      const v = await eerc.decryptAmount(txHash, kind);
+      if (!v) throw new Error("amount not ready");
+      return v.amount;
+    },
   });
 
   const memo = useQuery({

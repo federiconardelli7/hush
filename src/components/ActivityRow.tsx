@@ -51,8 +51,10 @@ export function ActivityRow({
     retryDelay: 1500,
     queryFn: async () => {
       const value = await eerc.decryptAmount(item.tx_hash, item.kind);
-      if (value == null) throw new Error("amount not ready");
-      return value;
+      if (!value) throw new Error("amount not ready");
+      // Phase 2: decryptAmount now returns { amount, token }; the token badge is
+      // added in the per-token Activity step — here we keep the amount string.
+      return value.amount;
     },
   });
 

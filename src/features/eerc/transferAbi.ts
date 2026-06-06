@@ -99,3 +99,21 @@ export const withdrawAbi = [
     ],
   },
 ] as const;
+
+// deposit(amount, tokenAddress, amountPCT) — decode the calldata to read the public
+// deposit amount (args[0], in the token's OWN dp) and which token (args[1]) directly,
+// without a Deposit-event lookup. F-12 multi-token: tells Activity which token a
+// deposit used.
+export const depositAbi = [
+  {
+    type: "function",
+    name: "deposit",
+    stateMutability: "nonpayable",
+    outputs: [],
+    inputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "tokenAddress", type: "address", internalType: "address" },
+      { name: "amountPCT", type: "uint256[7]", internalType: "uint256[7]" },
+    ],
+  },
+] as const;

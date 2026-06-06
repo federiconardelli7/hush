@@ -10,12 +10,16 @@ import {
 } from "viem";
 import { avalancheFuji } from "viem/chains";
 import { resolveCircuitUrls } from "@/features/eerc/circuits";
+import { CONTRACTS, EERC_DECIMALS } from "@/features/eerc/config/contracts";
 import {
-  CONTRACTS,
-  EERC_DECIMALS,
-  ERC20_DECIMALS,
-} from "@/features/eerc/config/contracts";
+  DEFAULT_TOKEN,
+  TOKENS,
+  tokenByAddress,
+  type TokenInfo,
+} from "@/features/eerc/tokens/registry";
+import { resolveTokenById } from "@/features/eerc/tokens/tokenResolver";
 import {
+  depositAbi,
   RECEIVER_AMOUNT_PCT_RANGE,
   transferAbi,
   WITHDRAW_AMOUNT_SIGNAL,
@@ -34,6 +38,13 @@ import {
 
 export type EercStatus = "preparing" | "ready";
 
+// One token's decrypted balance for the UI.
+export type TokenBalance = {
+  token: TokenInfo;
+  parsed: string; // decrypted balance with the converter's 6 dp applied ("" until decryptable)
+  ready: boolean; // key set AND this token's encrypted balance loaded
+};
+
 export type EercContextValue = {
   status: EercStatus;
   // Wallet-init failure (e.g. couldn't reach Fuji); null while preparing or ok.
@@ -42,33 +53,43 @@ export type EercContextValue = {
   isRegistered: boolean;
   // Whether the decryption key is loaded this session (gates balance decryption).
   isDecryptionKeySet: boolean;
-  // Human-readable decrypted balance (decimals applied); "" until decryptable.
+  // Per-token balances — one entry per registry token.
+  balances: TokenBalance[];
+  balanceFor: (tokenAddress: string) => TokenBalance;
+  // The default token's decrypted balance + readiness — convenience for single-
+  // token callers; multi-token screens use balances/balanceFor.
   parsedBalance: string;
-  // True once the key is set AND the encrypted balance is loaded — required
-  // before a transfer (the SDK errors otherwise).
   balanceReady: boolean;
   // New users: derive key + send the on-chain registration tx.
   register: () => Promise<void>;
   // Returning users (no cached key, e.g. after reload): sign to unlock balance.
   enableDecryption: () => Promise<void>;
-  // Add money: mint test tokens if needed, approve, and wrap into the balance.
-  deposit: (humanAmount: string) => Promise<{ transactionHash: `0x${string}` }>;
-  // Cash out: exit the encrypted balance back to the underlying token (amount in $).
-  withdraw: (humanAmount: string) => Promise<{ transactionHash: `0x${string}` }>;
-  // Send a confidential payment with an optional encrypted memo (amount in $).
+  // Money ops — tokenAddress defaults to the registry default (TEST) for callers
+  // that haven't adopted the selector yet. Add money: mint (mintable tokens only),
+  // approve, wrap. Cash out: exit to the underlying token. Send: confidential transfer.
+  deposit: (
+    humanAmount: string,
+    tokenAddress?: string,
+  ) => Promise<{ transactionHash: `0x${string}` }>;
+  withdraw: (
+    humanAmount: string,
+    tokenAddress?: string,
+  ) => Promise<{ transactionHash: `0x${string}` }>;
   send: (
     to: string,
     humanAmount: string,
     message?: string,
+    tokenAddress?: string,
   ) => Promise<{ transactionHash: `0x${string}` }>;
   // Whether a recipient has registered for eERC (required before sending).
   isAddressRegistered: (address: `0x${string}`) => Promise<boolean>;
-  // Decrypt YOUR own amount for a payment (dollars string), client-side: sent →
-  // sender balance delta; received → the per-tx amountPCT. null if undecryptable.
+  // Decrypt YOUR amount for one payment AND which token it used — the token is
+  // resolved on-chain from the tx calldata (never stored in the DB). null if
+  // undecryptable.
   decryptAmount: (
     txHash: string,
     role: "sent" | "received" | "deposit" | "withdraw",
-  ) => Promise<string | null>;
+  ) => Promise<{ amount: string; token: TokenInfo } | null>;
   // Decrypt the end-to-end encrypted memo (sender & receiver only).
   decryptMemo: (txHash: string) => Promise<string | null>;
   // Encrypt an amount to a recipient's eERC pubkey (money requests) — 7-element PCT.
@@ -76,8 +97,7 @@ export type EercContextValue = {
   // Decrypt a request-amount PCT addressed to me (dollars string).
   decryptRequestAmount: (pct: string[]) => Promise<string | null>;
   refetchBalance: () => void;
-  // Supabase auth binding (wallet → wallet_address JWT). boundWallet is what RLS
-  // sees via current_wallet() — confirms the claim round-trips.
+  // Supabase auth binding (wallet → wallet_address JWT).
   supabaseStatus: SupabaseStatus;
   supabaseBoundWallet: string | null;
   supabaseError: string | null;
@@ -86,12 +106,20 @@ export type EercContextValue = {
 const EercContext = createContext<EercContextValue | null>(null);
 export { EercContext };
 
+const emptyBalance = (token: TokenInfo): TokenBalance => ({
+  token,
+  parsed: "",
+  ready: false,
+});
+
 const PREPARING = (walletError: string | null): EercContextValue => ({
   status: "preparing",
   walletError,
   address: null,
   isRegistered: false,
   isDecryptionKeySet: false,
+  balances: TOKENS.map(emptyBalance),
+  balanceFor: () => emptyBalance(DEFAULT_TOKEN),
   parsedBalance: "",
   balanceReady: false,
   register: async () => {},
@@ -170,11 +198,20 @@ function EercReady({
     circuitUrls,
     decryptionKey,
   );
-  const balance = eerc.useEncryptedBalance(CONTRACTS.erc20);
+
+  // One encrypted-balance handle per registry token. TOKENS is a module constant,
+  // so the hook count is stable across renders (rules-of-hooks safe).
+  const handles = TOKENS.map((token) => ({
+    token,
+    bal: eerc.useEncryptedBalance(token.address),
+  }));
+  const handleFor = (tokenAddress: string) =>
+    handles.find(
+      (h) => h.token.address.toLowerCase() === tokenAddress.toLowerCase(),
+    ) ?? handles[0];
 
   // A lightweight EERC instance for client-side crypto only (encrypt an amount to a
-  // recipient's pubkey, fetch pubkeys). Its constructor just sets up curve/field/
-  // poseidon (no fetching), and the useEERC hook doesn't expose these.
+  // recipient's pubkey, fetch pubkeys).
   const cryptoErc = useMemo(
     () =>
       new EERC(
@@ -191,87 +228,28 @@ function EercReady({
   // Bind this wallet to Supabase (wallet → wallet_address JWT) once it's ready.
   const supabaseSession = useSupabaseSession(walletClient, address);
 
+  const refetchBalance = () => handles.forEach((h) => h.bal.refetchBalance());
+
   // register() internally derives + sets the key, short-circuits if already
   // registered (no tx), else sends the registration proof tx.
   const register = async () => {
-    // Drip gas to the fresh embedded wallet first — register sends a real tx.
     await ensureFunded(publicClient, address);
     const { key } = await eerc.register();
     cacheDecryptionKey(address, key);
     setDecryptionKey(key);
     eerc.refetchEercUser();
-    balance.refetchBalance();
+    refetchBalance();
   };
 
   const enableDecryption = async () => {
     const key = await eerc.generateDecryptionKey();
     cacheDecryptionKey(address, key);
     setDecryptionKey(key);
-    balance.refetchBalance();
+    refetchBalance();
   };
 
-  // Add money: ensure test tokens, approve the converter, then wrap into the
-  // encrypted balance. Amount is entered in dollars and held at the token's dp.
-  const deposit = async (humanAmount: string) => {
-    // deposit encrypts the amount to your public key, so the key must be set
-    // (cleared on reload) — derive it first if needed.
-    if (!eerc.isDecryptionKeySet) {
-      const key = await eerc.generateDecryptionKey();
-      cacheDecryptionKey(address, key);
-      setDecryptionKey(key);
-    }
-    const amount = parseUnits(humanAmount, ERC20_DECIMALS);
-    await ensureTestBalance(publicClient, address, amount);
-    const approveHash = await walletClient.writeContract({
-      address: CONTRACTS.erc20 as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [CONTRACTS.encryptedERC as `0x${string}`, amount],
-      account: address,
-      chain: avalancheFuji,
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approveHash });
-    const result = await balance.deposit(amount);
-    balance.refetchBalance();
-    return { transactionHash: result.transactionHash };
-  };
-
-  // Cash out: exit the encrypted balance back to the underlying token. Amount is
-  // in the converter's 2 dp (like send, NOT deposit's 18) — withdraw subtracts it
-  // from the decrypted balance. Needs the key + a loaded balance (gated by the UI).
-  const withdraw = async (humanAmount: string) => {
-    if (!eerc.isDecryptionKeySet) {
-      const key = await eerc.generateDecryptionKey();
-      cacheDecryptionKey(address, key);
-      setDecryptionKey(key);
-    }
-    const amount = parseUnits(humanAmount, EERC_DECIMALS);
-    const result = await balance.withdraw(amount);
-    balance.refetchBalance();
-    return { transactionHash: result.transactionHash };
-  };
-
-  // privateTransfer amount is in the converter's decimals (2), unlike deposit.
-  const send = async (to: string, humanAmount: string, message?: string) => {
-    if (!eerc.isDecryptionKeySet) {
-      const key = await eerc.generateDecryptionKey();
-      cacheDecryptionKey(address, key);
-      setDecryptionKey(key);
-    }
-    const amount = parseUnits(humanAmount, EERC_DECIMALS);
-    const result = await balance.privateTransfer(to, amount, message);
-    balance.refetchBalance();
-    return { transactionHash: result.transactionHash };
-  };
-
-  const isAddressRegistered = async (recipient: `0x${string}`) => {
-    const { isRegistered } = await eerc.isAddressRegistered(recipient);
-    return isRegistered;
-  };
-
-  // Ensure the decryption key is loaded before any decrypt (same guard as
-  // send/deposit). Activity also gates this behind an unlock CTA, so in practice
-  // this returns the cached key — no per-row signing.
+  // Ensure the decryption key is loaded before any op that needs it (returns the
+  // cached key in practice — the UI gates behind an unlock CTA).
   const ensureKey = async () => {
     if (eerc.isDecryptionKeySet && decryptionKey) return decryptionKey;
     const key = await eerc.generateDecryptionKey();
@@ -280,70 +258,134 @@ function EercReady({
     return key;
   };
 
-  // Decrypt YOUR amount for one payment. decryptTransaction is sender-side (a
-  // balance delta) so it only yields the SENT amount; for RECEIVED payments we
-  // decrypt the per-tx amountPCT the sender encrypted to us
-  // (proof.publicSignals[16..22]) via the SDK's exported Poseidon helper. Both
-  // return a dollar string with the converter's decimals applied.
+  // Add money: ensure tokens (faucet-mint for mintable tokens only — USDC is funded
+  // by sending it in), approve the converter, then wrap into the encrypted balance.
+  // Amount is entered in the token's OWN dp; the converter scales it to its 6 dp.
+  const deposit = async (
+    humanAmount: string,
+    tokenAddress: string = DEFAULT_TOKEN.address,
+  ) => {
+    const { token, bal } = handleFor(tokenAddress);
+    await ensureKey();
+    const amount = parseUnits(humanAmount, token.decimals);
+    if (token.mintable) await ensureTestBalance(publicClient, address, amount);
+    const approveHash = await walletClient.writeContract({
+      address: token.address,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [CONTRACTS.encryptedERC as `0x${string}`, amount],
+      account: address,
+      chain: avalancheFuji,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    const result = await bal.deposit(amount);
+    bal.refetchBalance();
+    return { transactionHash: result.transactionHash };
+  };
+
+  // Cash out: exit the encrypted balance back to the underlying token. Amount is in
+  // the converter's 6 dp (like send).
+  const withdraw = async (
+    humanAmount: string,
+    tokenAddress: string = DEFAULT_TOKEN.address,
+  ) => {
+    const { bal } = handleFor(tokenAddress);
+    await ensureKey();
+    const amount = parseUnits(humanAmount, EERC_DECIMALS);
+    const result = await bal.withdraw(amount);
+    bal.refetchBalance();
+    return { transactionHash: result.transactionHash };
+  };
+
+  // Confidential transfer with an optional encrypted memo. Amount is in the
+  // converter's 6 dp.
+  const send = async (
+    to: string,
+    humanAmount: string,
+    message?: string,
+    tokenAddress: string = DEFAULT_TOKEN.address,
+  ) => {
+    const { bal } = handleFor(tokenAddress);
+    await ensureKey();
+    const amount = parseUnits(humanAmount, EERC_DECIMALS);
+    const result = await bal.privateTransfer(to, amount, message);
+    bal.refetchBalance();
+    return { transactionHash: result.transactionHash };
+  };
+
+  const isAddressRegistered = async (recipient: `0x${string}`) => {
+    const { isRegistered } = await eerc.isAddressRegistered(recipient);
+    return isRegistered;
+  };
+
+  // Decrypt YOUR amount for one payment AND which token it used. The token is
+  // resolved on-chain from the tx calldata (deposit → tokenAddress arg; transfer/
+  // withdraw → tokenId via tokenAddresses(id)) so the DB never reveals the currency
+  // (F-12 privacy). Amount uses the token's dp for deposits (public), else the
+  // converter's 6 dp.
   const decryptAmount = async (
     txHash: string,
     role: "sent" | "received" | "deposit" | "withdraw",
-  ): Promise<string | null> => {
+  ): Promise<{ amount: string; token: TokenInfo } | null> => {
     const key = await ensureKey();
     try {
-      // received & withdraw amounts are public signals in the tx calldata — the
-      // SDK's decryptTransaction doesn't surface them correctly (received: N/A;
-      // withdraw: it returns args[0], which is the tokenId, not the amount).
-      if (role === "received" || role === "withdraw") {
-        const tx = await publicClient.getTransaction({
-          hash: txHash as `0x${string}`,
-        });
-        if (role === "withdraw") {
-          // withdraw amount = proof.publicSignals[0] (converter's 2 dp).
-          const { args } = decodeFunctionData({
-            abi: withdrawAbi,
-            data: tx.input,
-          });
-          const proof = args[1] as { publicSignals: readonly bigint[] };
-          return formatUnits(
+      const tx = await publicClient.getTransaction({
+        hash: txHash as `0x${string}`,
+      });
+      if (role === "deposit") {
+        // deposit(amount, tokenAddress, amountPCT) — public amount at the token's dp.
+        const { args } = decodeFunctionData({ abi: depositAbi, data: tx.input });
+        const token = tokenByAddress(args[1] as string);
+        if (!token) return null;
+        return { amount: formatUnits(args[0] as bigint, token.decimals), token };
+      }
+      if (role === "withdraw") {
+        // withdraw(tokenId, proof, …) — amount = proof.publicSignals[0] (6 dp).
+        const { args } = decodeFunctionData({ abi: withdrawAbi, data: tx.input });
+        const token = await resolveTokenById(publicClient, args[0] as bigint);
+        if (!token) return null;
+        const proof = args[1] as { publicSignals: readonly bigint[] };
+        return {
+          amount: formatUnits(
             proof.publicSignals[WITHDRAW_AMOUNT_SIGNAL],
             EERC_DECIMALS,
-          );
-        }
-        // received: the sender encrypts the amount to us as a per-tx amountPCT
-        // in the transfer calldata (proof.publicSignals[16..22]).
-        const { args } = decodeFunctionData({ abi: transferAbi, data: tx.input });
+          ),
+          token,
+        };
+      }
+      // sent | received — transfer(to, tokenId, proof, …).
+      const { args } = decodeFunctionData({ abi: transferAbi, data: tx.input });
+      const token = await resolveTokenById(publicClient, args[1] as bigint);
+      if (!token) return null;
+      if (role === "received") {
+        // the sender's per-tx amountPCT to us — proof.publicSignals[16..22].
         const proof = args[2] as { publicSignals: readonly bigint[] };
         const [start, end] = RECEIVER_AMOUNT_PCT_RANGE;
-        const pct = proof.publicSignals
-          .slice(start, end)
-          .map((x) => x.toString());
-        return formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS);
+        const pct = proof.publicSignals.slice(start, end).map((x) => x.toString());
+        return {
+          amount: formatUnits(Poseidon.decryptAmountPCT(key, pct), EERC_DECIMALS),
+          token,
+        };
       }
-      // sent & deposit come from decryptTransaction.
-      const events = await balance.decryptTransaction(txHash);
-      if (role === "sent") {
-        const e = events.find(
-          (x) => x.eventType === "PrivateTransfer" && x.decryptedAmount,
-        );
-        return e?.decryptedAmount
-          ? formatUnits(BigInt(e.decryptedAmount), EERC_DECIMALS)
-          : null;
-      }
-      // deposit: the public token amount is the Deposit event's amount (args[0], 18 dp).
-      const e = events.find((x) => x.eventType === "Deposit" && x.amount);
-      return e?.amount ? formatUnits(BigInt(e.amount), ERC20_DECIMALS) : null;
+      // sent: decryptTransaction on the token's handle → the PrivateTransfer delta.
+      const events = await handleFor(token.address).bal.decryptTransaction(txHash);
+      const e = events.find(
+        (x) => x.eventType === "PrivateTransfer" && x.decryptedAmount,
+      );
+      return e?.decryptedAmount
+        ? { amount: formatUnits(BigInt(e.decryptedAmount), EERC_DECIMALS), token }
+        : null;
     } catch {
       return null;
     }
   };
 
-  // The encrypted memo is encrypted to both parties, so it decrypts for the
-  // sender and the receiver alike.
+  // The encrypted memo is on the transfer tx and decrypts for either party; the
+  // default handle resolves it (it's token-agnostic — the message field, not the amount).
   const decryptMemo = async (txHash: string): Promise<string | null> => {
     await ensureKey();
     try {
-      const meta = await balance.decryptMessage(txHash);
+      const meta = await handles[0].bal.decryptMessage(txHash);
       return meta.decryptedMessage || null;
     } catch {
       return null;
@@ -351,8 +393,7 @@ function EercReady({
   };
 
   // Encrypt an amount to a recipient's eERC public key → a 7-element Poseidon PCT
-  // (same format as the transfer amountPCT). Money requests use this so the amount
-  // is readable only by the two parties — it never touches the DB in plaintext.
+  // (money requests; readable only by the two parties — never in the DB plaintext).
   const encryptAmountFor = async (
     toAddress: string,
     humanAmount: string,
@@ -383,17 +424,30 @@ function EercReady({
     }
   };
 
+  const balances: TokenBalance[] = handles.map((h) => ({
+    token: h.token,
+    parsed: formatUnits(h.bal.decryptedBalance, EERC_DECIMALS),
+    ready:
+      eerc.isRegistered &&
+      eerc.isDecryptionKeySet &&
+      h.bal.encryptedBalance.length > 0,
+  }));
+  const balanceFor = (tokenAddress: string) =>
+    balances.find(
+      (b) => b.token.address.toLowerCase() === tokenAddress.toLowerCase(),
+    ) ?? balances[0];
+  const defaultBal = balanceFor(DEFAULT_TOKEN.address);
+
   const value: EercContextValue = {
     status: "ready",
     walletError: null,
     address,
     isRegistered: eerc.isRegistered,
     isDecryptionKeySet: eerc.isDecryptionKeySet,
-    parsedBalance: formatUnits(balance.decryptedBalance, EERC_DECIMALS),
-    balanceReady:
-      eerc.isRegistered &&
-      eerc.isDecryptionKeySet &&
-      balance.encryptedBalance.length > 0,
+    balances,
+    balanceFor,
+    parsedBalance: defaultBal.parsed,
+    balanceReady: defaultBal.ready,
     register,
     enableDecryption,
     deposit,
@@ -404,7 +458,7 @@ function EercReady({
     decryptMemo,
     encryptAmountFor,
     decryptRequestAmount,
-    refetchBalance: balance.refetchBalance,
+    refetchBalance,
     supabaseStatus: supabaseSession.status,
     supabaseBoundWallet: supabaseSession.boundWallet,
     supabaseError: supabaseSession.error,
