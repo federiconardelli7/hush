@@ -16,7 +16,7 @@ import { useReadIds } from "@/features/notifications/seen";
 import { isUnreadKind, useNotifications } from "@/features/notifications/useNotifications";
 import { useActivity } from "@/features/payments/useActivity";
 import { displayName } from "@/lib/identity";
-import { formatMoney } from "@/lib/money";
+import { formatTokenAmount } from "@/lib/money";
 
 export default function Home() {
   const { colors } = useTheme();
@@ -111,7 +111,19 @@ export default function Home() {
                 <Text style={styles.privatePillText}>Private</Text>
               </View>
             </View>
-            <Text style={styles.balanceValue}>{formatMoney(eerc.parsedBalance)}</Text>
+            {eerc.balances.map((b) => (
+              <View
+                key={b.token.symbol}
+                style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}
+              >
+                <Text style={styles.balanceValue}>
+                  {balanceUnlocked
+                    ? formatTokenAmount(b.parsed || "0", b.token)
+                    : "••••"}
+                </Text>
+                <Text style={styles.balanceLabel}>{b.token.symbol}</Text>
+              </View>
+            ))}
           </View>
           <View style={styles.tiles}>
             {tiles.map((t) => (
@@ -190,7 +202,10 @@ export default function Home() {
         </Pressable>
       </View>
       <BalanceCard
-        balance={balanceUnlocked ? formatMoney(eerc.parsedBalance) : "••••"}
+        rows={eerc.balances.map((b) => ({
+          symbol: b.token.symbol,
+          text: balanceUnlocked ? formatTokenAmount(b.parsed || "0", b.token) : "••••",
+        }))}
       />
 
       {!eerc.isRegistered ? (

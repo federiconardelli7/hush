@@ -1,16 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
-import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
+import { FundUsdcCard } from "@/components/FundUsdcCard";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
+import { TokenPicker } from "@/components/TokenPicker";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
+import { DEFAULT_TOKEN, tokenByAddress } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
 
@@ -22,18 +24,20 @@ export default function AddMoney() {
   const { deposit, address } = useEerc();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
+  const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const value = Number(amount || "0");
   const canAdd = value > 0 && !busy;
+  const info = tokenByAddress(token);
 
   const onAdd = async () => {
     if (!canAdd) return;
     setBusy(true);
     setError(null);
     try {
-      const { transactionHash } = await deposit(amount);
+      const { transactionHash } = await deposit(amount, token);
       if (address) {
         await accountEventsRepo.record({
           tx_hash: transactionHash,
@@ -50,11 +54,43 @@ export default function AddMoney() {
     }
   };
 
+  // The funding section: the TokenPicker (tap to switch method/token) + the USDC
+  // funding detail below it when USDC is selected. TEST funds instantly via the faucet.
+  const funding = (
+    <View style={styles.funding}>
+      <TokenPicker value={token} onChange={setToken} label="Funding" />
+      {info?.mintable ? null : (
+        <View style={styles.usdcWrap}>
+          <FundUsdcCard address={address} />
+        </View>
+      )}
+    </View>
+  );
+
+  const presets = (
+    <View style={styles.presets}>
+      {PRESETS.map((v) => {
+        const selected = amount === v;
+        return (
+          <Pressable
+            key={v}
+            onPress={() => setAmount(v)}
+            style={[styles.chip, { backgroundColor: selected ? colors.ink : colors.chip }]}
+          >
+            <Text style={[styles.chipText, { color: selected ? colors.bg : colors.sub }]}>
+              {presetLabel(v)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
   const isWide = useIsWide();
 
   if (isWide) {
-    const desktopBody = (
-      <>
+    return (
+      <DesktopScreen title="Add money" back center maxWidth={460}>
         <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text style={[typeScale.balanceHero, styles.amount, { color: colors.ink }]}>
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
@@ -64,58 +100,18 @@ export default function AddMoney() {
             Wrapped into your private balance. Amounts stay encrypted.
           </Text>
         </View>
-
-        <View style={styles.presets}>
-          {PRESETS.map((v) => {
-            const selected = amount === v;
-            return (
-              <Pressable
-                key={v}
-                onPress={() => setAmount(v)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: selected ? colors.ink : colors.chip },
-                ]}
-              >
-                <Text
-                  style={[styles.chipText, { color: selected ? colors.bg : colors.sub }]}
-                >
-                  {presetLabel(v)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
-          <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-            <Feather name="download-cloud" size={20} color={colors.positive} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.methodSub, { color: colors.sub }]}>Funding · test tokens</Text>
-            <Text style={[styles.methodMain, { color: colors.ink }]}>Fuji testnet</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color={colors.sub} />
-        </View>
-
+        {presets}
+        {funding}
         <View style={styles.keypadWrapWide}>
           <Keypad onKey={(k) => setAmount((a) => applyAmountKey(a, k))} />
         </View>
-
-        {error ? (
-          <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
-        ) : null}
+        {error ? <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text> : null}
         <Button
           label={busy ? "Adding…" : value > 0 ? `Add $${amount}` : "Add money"}
           variant="primary"
           onPress={onAdd}
           style={styles.ctaWide}
         />
-      </>
-    );
-    return (
-      <DesktopScreen title="Add money" back center maxWidth={460}>
-        {desktopBody}
       </DesktopScreen>
     );
   }
@@ -142,47 +138,12 @@ export default function AddMoney() {
           Wrapped into your private balance. Amounts stay encrypted.
         </Text>
       </View>
-
-      <View style={styles.presets}>
-        {PRESETS.map((v) => {
-          const selected = amount === v;
-          return (
-            <Pressable
-              key={v}
-              onPress={() => setAmount(v)}
-              style={[
-                styles.chip,
-                { backgroundColor: selected ? colors.ink : colors.chip },
-              ]}
-            >
-              <Text
-                style={[styles.chipText, { color: selected ? colors.bg : colors.sub }]}
-              >
-                {presetLabel(v)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
-        <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-          <Feather name="download-cloud" size={20} color={colors.positive} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.methodSub, { color: colors.sub }]}>Funding · test tokens</Text>
-          <Text style={[styles.methodMain, { color: colors.ink }]}>Fuji testnet</Text>
-        </View>
-        <Feather name="chevron-right" size={20} color={colors.sub} />
-      </View>
-
+      {presets}
+      {funding}
       <View style={styles.keypadWrap}>
         <Keypad onKey={(k) => setAmount((a) => applyAmountKey(a, k))} />
       </View>
-
-      {error ? (
-        <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
-      ) : null}
+      {error ? <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text> : null}
       <Button
         label={busy ? "Adding…" : value > 0 ? `Add $${amount}` : "Add money"}
         variant="primary"
@@ -206,18 +167,8 @@ const styles = StyleSheet.create({
   presets: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.md },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
-  method: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: 12,
-    borderRadius: radius.button,
-    borderWidth: 1,
-    marginTop: spacing.lg,
-  },
-  methodIcon: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  methodSub: { fontFamily: fonts.ui, fontSize: 12 },
-  methodMain: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
+  funding: { marginTop: spacing.lg },
+  usdcWrap: { marginTop: spacing.sm },
   keypadWrap: { marginTop: "auto", paddingTop: spacing.lg },
   keypadWrapWide: { marginTop: spacing.xl },
   error: { fontFamily: fonts.ui, fontSize: 13, textAlign: "center", marginBottom: spacing.sm },

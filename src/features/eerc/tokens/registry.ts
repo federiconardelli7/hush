@@ -31,7 +31,7 @@ export const TOKENS: readonly TokenInfo[] = [
     address: CONTRACTS.usdc as `0x${string}`,
     decimals: 6,
     symbol: "USDC",
-    label: "USDC",
+    label: "USD Coin",
     mintable: false,
     usdPegged: true,
   },

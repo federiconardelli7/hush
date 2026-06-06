@@ -14,7 +14,7 @@ import { fonts } from "@/design-system/typography";
 import { CONTRACTS } from "@/features/eerc/config/contracts";
 import { transferAbi } from "@/features/eerc/transferAbi";
 import { useEerc } from "@/features/eerc/useEerc";
-import { formatSignedMoney } from "@/lib/money";
+import { formatSignedToken } from "@/lib/money";
 
 type Kind = "sent" | "received" | "deposit" | "withdraw";
 
@@ -64,7 +64,7 @@ export default function Receipt() {
     queryFn: async () => {
       const v = await eerc.decryptAmount(txHash, kind);
       if (!v) throw new Error("amount not ready");
-      return v.amount;
+      return v; // { amount, token }
     },
   });
 
@@ -102,8 +102,8 @@ export default function Receipt() {
   const isLocked = !eerc.isDecryptionKeySet;
   let amountText: string;
   if (amount.isPending) amountText = "···";
-  else if (amount.data == null) amountText = "—";
-  else amountText = formatSignedMoney(amount.data, positive);
+  else if (!amount.data) amountText = "—";
+  else amountText = formatSignedToken(amount.data.amount, positive, amount.data.token);
   const amountColor =
     eerc.isDecryptionKeySet && amount.data != null
       ? positive
@@ -126,6 +126,7 @@ export default function Receipt() {
     ...(note ? [{ label: "Note", value: note }] : []),
     { label: "Date", value: date },
     { label: "Network", value: "Avalanche Fuji" },
+    ...(amount.data ? [{ label: "Token", value: amount.data.token.symbol }] : []),
   ];
 
   return (

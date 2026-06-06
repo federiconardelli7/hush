@@ -5,28 +5,33 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
+import { TokenPicker } from "@/components/TokenPicker";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
+import { DEFAULT_TOKEN } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
-import { formatMoney } from "@/lib/money";
+import { formatTokenAmount } from "@/lib/money";
 
 export default function CashOut() {
   const { colors } = useTheme();
-  const { withdraw, parsedBalance, balanceReady, address } = useEerc();
+  const eerc = useEerc();
+  const { withdraw, address } = eerc;
   const queryClient = useQueryClient();
+  const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const available = Number(parsedBalance || "0");
+  const bal = eerc.balanceFor(token);
+  const available = Number(bal.parsed || "0");
   const value = Number(amount || "0");
   const overBalance = value > available;
-  const canCashOut = value > 0 && !overBalance && balanceReady && !busy;
+  const canCashOut = value > 0 && !overBalance && bal.ready && !busy;
   const presets = ["50", "100", "500"].filter((v) => Number(v) <= available);
 
   const onCashOut = async () => {
@@ -34,7 +39,7 @@ export default function CashOut() {
     setBusy(true);
     setError(null);
     try {
-      const { transactionHash } = await withdraw(amount);
+      const { transactionHash } = await withdraw(amount, token);
       if (address) {
         await accountEventsRepo.record({
           tx_hash: transactionHash,
@@ -53,7 +58,7 @@ export default function CashOut() {
 
   const label = busy
     ? "Cashing out…"
-    : !balanceReady
+    : !bal.ready
       ? "Loading your balance…"
       : overBalance
         ? "Not enough balance"
@@ -78,14 +83,18 @@ export default function CashOut() {
             {amount || "0"}
           </Text>
           <Text style={[styles.caption, { color: colors.sub }]}>
-            Available {formatMoney(parsedBalance)}
+            Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
         </View>
 
+        <View style={styles.selectorWrap}>
+          <TokenPicker value={token} onChange={setToken} label="Cash out" />
+        </View>
+
         <View style={styles.presets}>
-          {balanceReady && available > 0 ? (
+          {bal.ready && available > 0 ? (
             <Pressable
-              onPress={() => setAmount(parsedBalance)}
+              onPress={() => setAmount(bal.parsed)}
               style={[styles.chip, { backgroundColor: colors.chip }]}
             >
               <Text style={[styles.chipText, { color: colors.sub }]}>Max</Text>
@@ -117,7 +126,7 @@ export default function CashOut() {
             <Feather name="upload" size={20} color={colors.ink} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · test tokens</Text>
+            <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · {bal.token.symbol}</Text>
             <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
           </View>
           <Feather name="chevron-right" size={20} color={colors.sub} />
@@ -170,14 +179,18 @@ export default function CashOut() {
           {amount || "0"}
         </Text>
         <Text style={[styles.caption, { color: colors.sub }]}>
-          Available {formatMoney(parsedBalance)}
+          Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
       </View>
 
+      <View style={styles.selectorWrap}>
+        <TokenPicker value={token} onChange={setToken} label="Cash out" />
+      </View>
+
       <View style={styles.presets}>
-        {balanceReady && available > 0 ? (
+        {bal.ready && available > 0 ? (
           <Pressable
-            onPress={() => setAmount(parsedBalance)}
+            onPress={() => setAmount(bal.parsed)}
             style={[styles.chip, { backgroundColor: colors.chip }]}
           >
             <Text style={[styles.chipText, { color: colors.sub }]}>Max</Text>
@@ -209,7 +222,7 @@ export default function CashOut() {
           <Feather name="upload" size={20} color={colors.ink} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · test tokens</Text>
+          <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · {bal.token.symbol}</Text>
           <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
         </View>
         <Feather name="chevron-right" size={20} color={colors.sub} />
@@ -242,6 +255,7 @@ const styles = StyleSheet.create({
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 30, fontWeight: "700" },
   caption: { fontFamily: fonts.ui, fontSize: 12.5, textAlign: "center", maxWidth: 280 },
+  selectorWrap: { alignItems: "center", marginTop: spacing.md },
   presets: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.md },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },

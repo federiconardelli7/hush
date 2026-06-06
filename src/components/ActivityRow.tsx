@@ -9,7 +9,7 @@ import { useEerc } from "@/features/eerc/useEerc";
 import { formatRowDateTime, formatTimeOfDay } from "@/features/payments/dateGroups";
 import type { ActivityEntry } from "@/features/payments/useActivity";
 import { displayName } from "@/lib/identity";
-import { formatSignedMoney } from "@/lib/money";
+import { formatSignedToken } from "@/lib/money";
 
 const CASH_META: Record<
   "deposit" | "withdraw",
@@ -52,9 +52,7 @@ export function ActivityRow({
     queryFn: async () => {
       const value = await eerc.decryptAmount(item.tx_hash, item.kind);
       if (!value) throw new Error("amount not ready");
-      // Phase 2: decryptAmount now returns { amount, token }; the token badge is
-      // added in the per-token Activity step — here we keep the amount string.
-      return value.amount;
+      return value; // { amount, token } — token badge distinguishes TEST vs USDC
     },
   });
 
@@ -73,9 +71,10 @@ export function ActivityRow({
   const locked = !eerc.isDecryptionKeySet;
   let amountText: string;
   if (amount.isPending) amountText = "···";
-  else if (amount.data == null) amountText = "—";
-  else amountText = formatSignedMoney(amount.data, positive);
+  else if (!amount.data) amountText = "—";
+  else amountText = formatSignedToken(amount.data.amount, positive, amount.data.token);
   const hasAmount = eerc.isDecryptionKeySet && amount.data != null;
+  const tokenSym = amount.data?.token.symbol;
 
   const leading = isTransfer ? (
     <Avatar name={name} size={36} />
@@ -118,7 +117,12 @@ export function ActivityRow({
           {locked ? (
             <Feather name="lock" size={14.5} color={colors.sub} />
           ) : (
-            <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+            <>
+              <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+              {hasAmount && tokenSym ? (
+                <Text style={[styles.tokenTag, { color: colors.sub }]}>{tokenSym}</Text>
+              ) : null}
+            </>
           )}
         </View>
       </View>
@@ -167,6 +171,9 @@ export function ActivityRow({
             {amountText}
           </Text>
         )}
+        {hasAmount && tokenSym ? (
+          <Text style={[styles.tokenTag, { color: colors.sub }]}>{tokenSym}</Text>
+        ) : null}
         <Text style={[styles.time, { color: colors.sub }]}>
           {formatTimeOfDay(item.created_at)}
         </Text>
@@ -184,6 +191,7 @@ const styles = StyleSheet.create({
   right: { alignItems: "flex-end" },
   amount: { fontFamily: fonts.ui, fontSize: 14.5, fontWeight: "700" },
   time: { fontFamily: fonts.ui, fontSize: 10.5, marginTop: 1 },
+  tokenTag: { fontFamily: fonts.ui, fontSize: 10.5, fontWeight: "700", marginTop: 1 },
   // Desktop "table" variant — cells aligned to the activity.tsx header columns.
   iconSm: { width: 36, height: 36, borderRadius: 18 },
   tRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14 },

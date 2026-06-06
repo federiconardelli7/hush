@@ -5,15 +5,18 @@ import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
+import { TokenPicker } from "@/components/TokenPicker";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
+import { DEFAULT_TOKEN } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { AUDIENCES, paymentsRepo, type Audience } from "@/features/payments/paymentsRepo";
 import { requestsRepo } from "@/features/requests/requestsRepo";
+import { formatTokenAmount } from "@/lib/money";
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
   friends: "Friends",
@@ -30,10 +33,12 @@ export default function PayAmount() {
     amount?: string;
   }>();
   const prefill = typeof amountParam === "string" ? amountParam : "";
-  const { address, send, isAddressRegistered, parsedBalance, balanceReady } =
-    useEerc();
+  const eerc = useEerc();
+  const { address, send, isAddressRegistered } = eerc;
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(prefill);
+  const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
+  const bal = eerc.balanceFor(token);
   const [memo, setMemo] = useState("");
   const [audience, setAudience] = useState<Audience>("friends");
   const [busy, setBusy] = useState(false);
@@ -56,14 +61,14 @@ export default function PayAmount() {
   const recipient = (to ?? "") as `0x${string}`;
 
   const onPay = async () => {
-    if (busy || value <= 0 || !recipient || !balanceReady) return;
+    if (busy || value <= 0 || !recipient || !bal.ready) return;
     setBusy(true);
     setError(null);
     try {
       if (!(await isAddressRegistered(recipient))) {
         throw new Error(`${name ?? "Recipient"} hasn't joined Hush yet.`);
       }
-      const { transactionHash } = await send(recipient, amount, memo.trim() || undefined);
+      const { transactionHash } = await send(recipient, amount, memo.trim() || undefined, token);
       if (address) {
         await paymentsRepo.record({
           tx_hash: transactionHash,
@@ -146,8 +151,12 @@ export default function PayAmount() {
             {amount || "0"}
           </Text>
           <Text style={[styles.avail, { color: colors.sub }]}>
-            Available ${parsedBalance || "0"}
+            Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
+        </View>
+
+        <View style={styles.tokenWrap}>
+          <TokenPicker value={token} onChange={setToken} label="Pay with" />
         </View>
 
         <View style={styles.audience}>
@@ -199,7 +208,7 @@ export default function PayAmount() {
           label={
             busy
               ? "Sending…"
-              : !balanceReady
+              : !bal.ready
                 ? "Loading your balance…"
                 : value > 0
                   ? `Pay $${amount}`
@@ -237,8 +246,12 @@ export default function PayAmount() {
           {amount || "0"}
         </Text>
         <Text style={[styles.avail, { color: colors.sub }]}>
-          Available ${parsedBalance || "0"}
+          Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
+      </View>
+
+      <View style={styles.tokenWrap}>
+        <TokenPicker value={token} onChange={setToken} label="Pay with" />
       </View>
 
       <View style={styles.audience}>
@@ -290,7 +303,7 @@ export default function PayAmount() {
         label={
           busy
             ? "Sending…"
-            : !balanceReady
+            : !bal.ready
               ? "Loading your balance…"
               : value > 0
                 ? `Pay $${amount}`
@@ -317,6 +330,7 @@ const styles = StyleSheet.create({
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },
   avail: { fontFamily: fonts.ui, fontSize: 13 },
+  tokenWrap: { marginTop: spacing.lg },
   audience: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.lg },
   aChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
   aChipRow: { flexDirection: "row", alignItems: "center", gap: 4 },
