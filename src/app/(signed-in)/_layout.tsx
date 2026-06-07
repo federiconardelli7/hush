@@ -67,6 +67,8 @@ export default function SignedInLayout() {
                 <Tabs.Screen name="add-money" options={{ href: null }} />
                 <Tabs.Screen name="pay-amount" options={{ href: null }} />
                 <Tabs.Screen name="cash-out" options={{ href: null }} />
+                <Tabs.Screen name="move-out-confirm" options={{ href: null }} />
+                <Tabs.Screen name="export-wallet" options={{ href: null }} />
                 <Tabs.Screen name="contacts" options={{ href: null }} />
                 <Tabs.Screen name="add-contact" options={{ href: null }} />
                 <Tabs.Screen name="contact" options={{ href: null }} />

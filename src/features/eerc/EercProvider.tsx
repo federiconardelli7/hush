@@ -81,6 +81,13 @@ export type EercContextValue = {
     message?: string,
     tokenAddress?: string,
   ) => Promise<{ transactionHash: `0x${string}` }>;
+  // Move out: plain ERC20 transfer of the underlying token from the embedded wallet
+  // to an external address (no eERC, no decryption key). Amount in the token's OWN dp.
+  sendErc20Out: (
+    to: string,
+    humanAmount: string,
+    tokenAddress?: string,
+  ) => Promise<{ transactionHash: `0x${string}` }>;
   // Whether a recipient has registered for eERC (required before sending).
   isAddressRegistered: (address: `0x${string}`) => Promise<boolean>;
   // Decrypt YOUR amount for one payment AND which token it used — the token is
@@ -131,6 +138,9 @@ const PREPARING = (walletError: string | null): EercContextValue => ({
     throw new Error("Wallet not ready.");
   },
   send: async () => {
+    throw new Error("Wallet not ready.");
+  },
+  sendErc20Out: async () => {
     throw new Error("Wallet not ready.");
   },
   isAddressRegistered: async () => false,
@@ -313,6 +323,28 @@ function EercReady({
     return { transactionHash: result.transactionHash };
   };
 
+  // Move out (step 2): send the underlying public ERC20 to an external address — a
+  // plain transfer from the embedded wallet, no eERC and no decryption key. Pairs with
+  // withdraw (step 1) in useMoveOut. Amount is in the token's OWN dp.
+  const sendErc20Out = async (
+    to: string,
+    humanAmount: string,
+    tokenAddress: string = DEFAULT_TOKEN.address,
+  ) => {
+    const { token } = handleFor(tokenAddress);
+    const amount = parseUnits(humanAmount, token.decimals);
+    const hash = await walletClient.writeContract({
+      address: token.address,
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: [to as `0x${string}`, amount],
+      account: address,
+      chain: avalancheFuji,
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    return { transactionHash: hash };
+  };
+
   const isAddressRegistered = async (recipient: `0x${string}`) => {
     const { isRegistered } = await eerc.isAddressRegistered(recipient);
     return isRegistered;
@@ -453,6 +485,7 @@ function EercReady({
     deposit,
     withdraw,
     send,
+    sendErc20Out,
     isAddressRegistered,
     decryptAmount,
     decryptMemo,
