@@ -6,48 +6,44 @@ import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { TOKENS, tokenByAddress } from "@/features/eerc/tokens/registry";
 
-// The one token picker used by Add money / Send / Cash out so selection works
-// identically everywhere. A method-card header (à la the old funding card) that
-// taps open an options panel below it — the same inline-disclosure pattern as the
-// Activity date pill (no modal/sheet infra). `label` is the per-screen framing
-// ("Funding" / "Pay with" / "Cash out"); the interaction is the same.
-export function TokenPicker({
+const MENU_W = 200;
+
+// The coin chip shown directly UNDER the amount — the coin is the denomination of
+// what you're typing (Add money / Send / Cash out). Tapping it opens a small menu
+// that FLOATS over the content below (absolute + zIndex) so the amount never reflows.
+// The host screen's amount block needs a raised zIndex so this menu paints on top.
+export function TokenChip({
   value,
   onChange,
-  label = "Token",
 }: {
   value: string;
   onChange: (address: string) => void;
-  label?: string;
 }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const selected = tokenByAddress(value) ?? TOKENS[0];
 
   return (
-    <View>
+    <View style={styles.wrap}>
       <Pressable
         onPress={() => setOpen((o) => !o)}
-        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.line }]}
+        style={[styles.chip, { backgroundColor: colors.chip }]}
       >
-        <View style={[styles.icon, { backgroundColor: colors.chip }]}>
-          <Feather name="dollar-sign" size={18} color={colors.ink} />
-        </View>
-        <View style={styles.headText}>
-          <Text style={[styles.label, { color: colors.sub }]}>{label}</Text>
-          <Text style={[styles.main, { color: colors.ink }]} numberOfLines={1}>
-            {selected.symbol} · {selected.label}
-          </Text>
-        </View>
-        <Feather
-          name={open ? "chevron-up" : "chevron-down"}
-          size={20}
-          color={colors.sub}
-        />
+        <Text style={[styles.sym, { color: colors.ink }]}>{selected.symbol}</Text>
+        <Feather name={open ? "chevron-up" : "chevron-down"} size={15} color={colors.sub} />
       </Pressable>
 
       {open ? (
-        <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.line }]}>
+        <View
+          style={[
+            styles.menu,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.line,
+              shadowColor: "#000",
+            },
+          ]}
+        >
           {TOKENS.map((t, i) => {
             const on = t.address.toLowerCase() === value.toLowerCase();
             return (
@@ -62,11 +58,11 @@ export function TokenPicker({
                   i ? { borderTopWidth: 1, borderTopColor: colors.line } : null,
                 ]}
               >
-                <View style={styles.headText}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.rowSym, { color: colors.ink }]}>{t.symbol}</Text>
                   <Text style={[styles.rowLabel, { color: colors.sub }]}>{t.label}</Text>
                 </View>
-                {on ? <Feather name="check" size={18} color={colors.actBlue} /> : null}
+                {on ? <Feather name="check" size={16} color={colors.actBlue} /> : null}
               </Pressable>
             );
           })}
@@ -77,28 +73,37 @@ export function TokenPicker({
 }
 
 const styles = StyleSheet.create({
-  card: {
+  // alignSelf keeps the chip centered under the amount; zIndex lets the open menu
+  // float over the Available/presets rows below it.
+  wrap: { alignSelf: "center", marginTop: spacing.xs, zIndex: 30 },
+  chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    padding: 12,
-    borderRadius: radius.button,
-    borderWidth: 1,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
   },
-  icon: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  headText: { flex: 1, minWidth: 0 },
-  label: { fontFamily: fonts.ui, fontSize: 12 },
-  main: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
-  panel: {
-    marginTop: spacing.sm,
+  sym: { fontFamily: fonts.ui, fontSize: 15, fontWeight: "700" },
+  menu: {
+    position: "absolute",
+    top: 42,
+    left: "50%",
+    marginLeft: -MENU_W / 2,
+    width: MENU_W,
     borderRadius: radius.button,
     borderWidth: 1,
     overflow: "hidden",
+    zIndex: 30,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 13,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     minHeight: 44,
   },

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
-import { TokenPicker } from "@/components/TokenPicker";
+import { TokenChip } from "@/components/TokenChip";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
@@ -27,20 +27,24 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
 
 export default function PayAmount() {
   const { colors } = useTheme();
-  const { to, name, requestId, amount: amountParam } = useLocalSearchParams<{
+  const { to, name, requestId, amount: amountParam, note: noteParam } = useLocalSearchParams<{
     to: string;
     name?: string;
     requestId?: string;
     amount?: string;
+    note?: string;
   }>();
   const prefill = typeof amountParam === "string" ? amountParam : "";
+  // Paying a request: default the memo to the request's note so the Sent activity row
+  // explains the payment (e.g. "lunch yesterday") instead of showing nothing.
+  const notePrefill = typeof noteParam === "string" ? noteParam : "";
   const eerc = useEerc();
   const { address, send, isAddressRegistered } = eerc;
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(prefill);
   const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
   const bal = eerc.balanceFor(token);
-  const [memo, setMemo] = useState("");
+  const [memo, setMemo] = useState(notePrefill);
   const [audience, setAudience] = useState<Audience>("friends");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,10 +59,10 @@ export default function PayAmount() {
     useCallback(() => {
       setDoneTx(null);
       setAmount(prefill);
-      setMemo("");
+      setMemo(notePrefill);
       setError(null);
       setBusy(false);
-    }, [prefill]),
+    }, [prefill, notePrefill]),
   );
 
   const value = Number(amount || "0");
@@ -154,15 +158,12 @@ export default function PayAmount() {
   if (isWide) {
     return (
       <DesktopScreen title={`Pay ${name ?? ""}`.trim()} back center maxWidth={460}>
-        <View style={styles.tokenWrapTop}>
-          <TokenPicker value={token} onChange={setToken} label="Pay with" />
-        </View>
-
         <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
             {amount || "0"}
           </Text>
+          <TokenChip value={token} onChange={setToken} />
           <Text style={[styles.avail, { color: colors.sub }]}>
             Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
@@ -249,15 +250,12 @@ export default function PayAmount() {
         <View style={styles.iconBtn} />
       </View>
 
-      <View style={styles.tokenWrapTop}>
-        <TokenPicker value={token} onChange={setToken} label="Pay with" />
-      </View>
-
       <View style={styles.amountWrap}>
         <Text style={[typeScale.amount, styles.amount, { color: colors.ink }]}>
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
           {amount || "0"}
         </Text>
+        <TokenChip value={token} onChange={setToken} />
         <Text style={[styles.avail, { color: colors.sub }]}>
           Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
@@ -334,12 +332,11 @@ const styles = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   chev: { fontSize: 26, fontWeight: "700", lineHeight: 28 },
   title: { flex: 1, textAlign: "center", fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
-  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm },
+  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm, zIndex: 20 },
   amountWrapWide: { marginTop: spacing.xl },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },
   avail: { fontFamily: fonts.ui, fontSize: 13 },
-  tokenWrapTop: { marginTop: spacing.xs, marginBottom: spacing.sm },
   audience: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.lg },
   aChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
   aChipRow: { flexDirection: "row", alignItems: "center", gap: 4 },

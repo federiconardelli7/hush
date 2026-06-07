@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { FundUsdcCard } from "@/components/FundUsdcCard";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
-import { TokenPicker } from "@/components/TokenPicker";
+import { TokenChip } from "@/components/TokenChip";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
@@ -85,13 +85,12 @@ export default function AddMoney() {
 
   const body = (
     <>
-      <TokenPicker value={token} onChange={setToken} label="Funding" />
-
       <View style={styles.amountWrap}>
         <Text style={[typeScale.balanceHero, styles.amount, { color: colors.ink }]}>
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
           {amount || "0"}
         </Text>
+        <TokenChip value={token} onChange={setToken} />
         <Text style={[styles.caption, { color: colors.sub }]}>{caption}</Text>
       </View>
 
@@ -173,7 +172,7 @@ const styles = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   chev: { fontSize: 26, fontWeight: "700", lineHeight: 28 },
   title: { flex: 1, textAlign: "center", fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
-  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm },
+  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm, zIndex: 20 },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 30, fontWeight: "700" },
   caption: { fontFamily: fonts.ui, fontSize: 12.5, textAlign: "center", maxWidth: 280 },

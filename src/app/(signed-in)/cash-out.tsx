@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { isAddress } from "viem";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
-import { TokenPicker } from "@/components/TokenPicker";
+import { TokenChip } from "@/components/TokenChip";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
@@ -172,10 +172,6 @@ export default function CashOut() {
   if (isWide) {
     const desktopBody = (
       <>
-        <View style={styles.selectorWrap}>
-          <TokenPicker value={token} onChange={setToken} label="Cash out" />
-        </View>
-
         <View style={[styles.amountWrap, styles.amountWrapWide]}>
           <Text
             style={[
@@ -187,6 +183,7 @@ export default function CashOut() {
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
             {amount || "0"}
           </Text>
+          <TokenChip value={token} onChange={setToken} />
           <Text style={[styles.caption, { color: colors.sub }]}>
             Available {formatTokenAmount(bal.parsed || "0", bal.token)}
           </Text>
@@ -259,10 +256,6 @@ export default function CashOut() {
         <View style={styles.iconBtn} />
       </View>
 
-      <View style={styles.selectorWrap}>
-        <TokenPicker value={token} onChange={setToken} label="Cash out" />
-      </View>
-
       <View style={styles.amountWrap}>
         <Text
           style={[
@@ -274,6 +267,7 @@ export default function CashOut() {
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
           {amount || "0"}
         </Text>
+        <TokenChip value={token} onChange={setToken} />
         <Text style={[styles.caption, { color: colors.sub }]}>
           Available {formatTokenAmount(bal.parsed || "0", bal.token)}
         </Text>
@@ -333,12 +327,12 @@ const styles = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   chev: { fontSize: 26, fontWeight: "700", lineHeight: 28 },
   title: { flex: 1, textAlign: "center", fontFamily: fonts.ui, fontSize: 18, fontWeight: "700" },
-  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm },
+  // zIndex raised so the TokenChip's open menu floats over the rows below it.
+  amountWrap: { alignItems: "center", marginTop: spacing.lg, gap: spacing.sm, zIndex: 20 },
   amountWrapWide: { marginTop: spacing.xl },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 30, fontWeight: "700" },
   caption: { fontFamily: fonts.ui, fontSize: 12.5, textAlign: "center", maxWidth: 280 },
-  selectorWrap: { alignItems: "center", marginTop: spacing.md },
   presets: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.md },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },

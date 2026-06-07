@@ -81,7 +81,7 @@ export function RequestRow({
     if (amount.data == null) return;
     router.push({
       pathname: "/pay-amount",
-      params: { to: item.requester_address, name, requestId: item.id, amount: amount.data },
+      params: { to: item.requester_address, name, requestId: item.id, amount: amount.data, note: item.note ?? "" },
     });
   };
 

@@ -61,6 +61,7 @@ export function NotificationRow({
         name,
         requestId: item.requestId ?? "",
         amount: amount.data,
+        note: item.note ?? "",
       },
     });
   };
