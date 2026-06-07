@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -127,19 +126,6 @@ export default function CashOut() {
     </View>
   );
 
-  const methodCard = (
-    <View style={[styles.method, { backgroundColor: colors.card, borderColor: colors.line }]}>
-      <View style={[styles.methodIcon, { backgroundColor: colors.chip }]}>
-        <Feather name="upload" size={20} color={colors.ink} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.methodSub, { color: colors.sub }]}>Withdraw · {bal.token.symbol}</Text>
-        <Text style={[styles.methodMain, { color: colors.ink }]}>To your wallet · Fuji testnet</Text>
-      </View>
-      <Feather name="chevron-right" size={20} color={colors.sub} />
-    </View>
-  );
-
   const recipientField = (
     <View style={styles.recipientWrap}>
       <TextInput
@@ -171,7 +157,13 @@ export default function CashOut() {
   const destinationSection = (
     <View style={styles.destinationWrap}>
       {destinationToggle}
-      {destination === "self" ? methodCard : recipientField}
+      {destination === "self" ? (
+        <Text style={[styles.recipientHint, { color: colors.sub }]}>
+          Arrives in your wallet · Fuji testnet
+        </Text>
+      ) : (
+        recipientField
+      )}
     </View>
   );
 
@@ -350,17 +342,6 @@ const styles = StyleSheet.create({
   presets: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", marginTop: spacing.md },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill },
   chipText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
-  method: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: 12,
-    borderRadius: radius.button,
-    borderWidth: 1,
-  },
-  methodIcon: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  methodSub: { fontFamily: fonts.ui, fontSize: 12 },
-  methodMain: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
   destinationWrap: { marginTop: spacing.lg, gap: spacing.sm },
   toggle: { flexDirection: "row", borderRadius: radius.pill, padding: 3 },
   toggleSeg: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, alignItems: "center" },

@@ -1,7 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useExportWallet, usePrivy } from "@privy-io/react-auth";
 import { router } from "expo-router";
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { Button } from "@/design-system/primitives/Button";
@@ -26,7 +25,6 @@ export default function ExportWallet() {
   const isWide = useIsWide();
   const { ready, authenticated, user } = usePrivy();
   const { exportWallet } = useExportWallet();
-  const [busy, setBusy] = useState(false);
 
   const hasEmbeddedWallet = Boolean(
     user?.linkedAccounts?.find(
@@ -36,19 +34,15 @@ export default function ExportWallet() {
         a.chainType === "ethereum",
     ),
   );
-  const canExport = ready && authenticated && hasEmbeddedWallet && !busy;
+  const canExport = ready && authenticated && hasEmbeddedWallet;
 
-  const onExport = async () => {
+  // Open Privy's secure export modal. We deliberately do NOT track a loading state:
+  // exportWallet's promise doesn't reliably settle when the user dismisses the modal,
+  // and this screen stays mounted (tab route), so a promise-tied "Opening…" state would
+  // get stuck on the button and block re-exporting. Firing on each tap re-opens it cleanly.
+  const onExport = () => {
     if (!canExport) return;
-    setBusy(true);
-    try {
-      await exportWallet();
-    } catch {
-      // The user closed the secure modal or it failed — nothing to surface, and the
-      // key never leaves Privy's iframe regardless.
-    } finally {
-      setBusy(false);
-    }
+    void exportWallet().catch(() => {});
   };
 
   const body = (
@@ -71,7 +65,7 @@ export default function ExportWallet() {
         ))}
       </View>
       <Button
-        label={busy ? "Opening…" : "Reveal private key"}
+        label="Reveal private key"
         variant="primary"
         onPress={onExport}
         style={styles.cta}
