@@ -66,7 +66,11 @@ export function ActivityRow({
   const name = isTransfer
     ? displayName(item.counterparty, item.counterpartyAddress ?? "")
     : CASH_META[item.kind as "deposit" | "withdraw"].label;
-  const note = isTransfer ? (item.caption ?? memo.data ?? "") : "Fuji · test tokens";
+  const note = isTransfer
+    ? (item.caption ?? memo.data ?? "")
+    : amount.data
+      ? `${amount.data.token.symbol} · Avalanche Fuji`
+      : "Avalanche Fuji";
 
   const locked = !eerc.isDecryptionKeySet;
   let amountText: string;
