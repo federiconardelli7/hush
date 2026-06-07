@@ -37,9 +37,10 @@ export async function signInToSupabase(
     const body = (await tokenRes.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Auth token request failed (${tokenRes.status}).`);
   }
-  // Note: the minted JWT expires in ~1h and is not auto-refreshed — after that, writes
-  // fail until the next sign-in (e.g. page reload re-runs this). Acceptable for the demo;
-  // a refresh-before-expiry pass belongs with key persistence (F-2).
+  // The minted JWT expires in ~1h. This function is reused as the client's reauth
+  // provider (see client.ts / useSupabaseSession.ts): when the token is near expiry,
+  // the supabase accessToken callback calls this again to silently re-sign + re-mint,
+  // so an idle tab keeps writing rather than failing with "JWT expired".
   const { token } = (await tokenRes.json()) as { token: string };
   setSupabaseToken(token);
 }

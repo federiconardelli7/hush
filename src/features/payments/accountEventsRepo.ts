@@ -36,6 +36,28 @@ export const accountEventsRepo = {
     return data as AccountEvent;
   },
 
+  // Backfill rows discovered on-chain (reconcileAccountEvents) that never reached the
+  // DB — e.g. the post-tx write failed with an expired JWT. `created_at` is the block
+  // time so rows sort correctly; tx_hash is the PK so existing rows are left untouched
+  // (ignoreDuplicates). RLS still scopes inserts to the caller's own wallet.
+  async backfill(
+    rows: { tx_hash: string; address: string; kind: AccountEventKind; created_at: string }[],
+  ): Promise<void> {
+    if (rows.length === 0) return;
+    const { error } = await supabase.from("account_events").upsert(
+      rows.map((r) => ({
+        tx_hash: r.tx_hash,
+        address: r.address.toLowerCase(),
+        kind: r.kind,
+        created_at: r.created_at,
+      })),
+      { onConflict: "tx_hash", ignoreDuplicates: true },
+    );
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
+
   // The current wallet's deposit/withdraw events, newest first (RLS: owner-only).
   async mine(address: string): Promise<AccountEvent[]> {
     const { data, error } = await supabase

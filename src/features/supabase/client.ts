@@ -8,17 +8,70 @@ if (!url || !anonKey) {
   );
 }
 
-// The wallet-derived Supabase JWT (minted by the dev backend), set after sign-in.
+// The wallet-derived Supabase JWT (minted by our backend), set after sign-in.
 let currentToken: string | null = null;
+// Re-mints the JWT (re-sign nonce → /api/auth/token). Registered once the wallet
+// is bound (useSupabaseSession); lets the accessToken callback silently refresh an
+// expiring token instead of waiting for a page reload. Cleared on sign-out.
+let reauth: (() => Promise<void>) | null = null;
+// Dedupes concurrent refreshes so a burst of requests triggers a single re-mint.
+let refreshing: Promise<void> | null = null;
+
+// Refresh when the token is within this many seconds of expiry (clock-skew headroom).
+const EXPIRY_SKEW_S = 60;
 
 export function setSupabaseToken(token: string | null): void {
   currentToken = token;
 }
 
-// supabase-js calls this for every request. While null, requests fall back to
-// the anon key (public reads still work); once a wallet token is set, writes run
-// as that wallet (RLS reads its `wallet_address` claim). Using `accessToken`
-// means we manage the session ourselves — supabase-js's own auth is bypassed.
-export const supabase = createClient(url, anonKey, {
-  accessToken: async () => currentToken,
-});
+export function setReauthProvider(fn: (() => Promise<void>) | null): void {
+  reauth = fn;
+}
+
+// Reads `exp` (unix seconds) from a JWT payload WITHOUT verifying the signature —
+// we only need the expiry to decide whether to refresh. Returns null for a
+// missing/malformed token, which we treat as "needs refresh".
+function tokenExp(token: string | null): number | null {
+  const part = token?.split(".")[1];
+  if (!part) return null;
+  try {
+    let b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4;
+    if (pad) b64 += "=".repeat(4 - pad);
+    const payload = JSON.parse(atob(b64)) as { exp?: number };
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+function isFresh(token: string | null): boolean {
+  const exp = tokenExp(token);
+  if (exp === null) return false;
+  return exp - Math.floor(Date.now() / 1000) > EXPIRY_SKEW_S;
+}
+
+// supabase-js calls this for EVERY request. While null we use the anon key (public
+// reads still work); otherwise we return the wallet token — transparently re-minting
+// it first if it's expired or about to be, so an idle tab no longer fails writes with
+// "JWT expired". RLS reads the token's `wallet_address` claim.
+async function accessToken(): Promise<string | null> {
+  if (!currentToken) return null;
+  if (isFresh(currentToken)) return currentToken;
+  if (reauth) {
+    refreshing ??= reauth().finally(() => {
+      refreshing = null;
+    });
+    try {
+      await refreshing;
+    } catch {
+      // Re-mint failed (e.g. the Privy session itself expired) — fall through with
+      // the stale token so the request fails honestly and the caller can handle it.
+    }
+  }
+  return currentToken;
+}
+
+// Using `accessToken` (not a static Authorization header) means we manage the session
+// ourselves — supabase-js's own auth is bypassed (the recommended path for a self-minted JWT).
+export const supabase = createClient(url, anonKey, { accessToken });

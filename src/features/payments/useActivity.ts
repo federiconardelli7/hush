@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
 import { accountEventsRepo } from "@/features/payments/accountEventsRepo";
 import { paymentsRepo } from "@/features/payments/paymentsRepo";
+import { reconcileAccountEvents } from "@/features/payments/reconcileAccountEvents";
 import { profilesRepo } from "@/features/profile/profilesRepo";
 import type { Profile } from "@/features/profile/schema";
 
@@ -19,10 +21,20 @@ export type ActivityEntry = {
 };
 
 export function useActivity(me: string | undefined) {
+  const publicClient = usePublicClient();
   return useQuery({
     queryKey: ["activity", me],
     enabled: Boolean(me),
     queryFn: async (): Promise<ActivityEntry[]> => {
+      // Heal any deposit/withdraw the chain has but the DB is missing (e.g. a post-tx
+      // write that failed) before reading. Best-effort — never block Activity on it.
+      if (publicClient) {
+        try {
+          await reconcileAccountEvents(publicClient, me!);
+        } catch {
+          // reconcile is best-effort; fall through to whatever the DB already has
+        }
+      }
       const [payments, events] = await Promise.all([
         paymentsRepo.mine(me!),
         accountEventsRepo.mine(me!),

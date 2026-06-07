@@ -46,9 +46,16 @@ export default function AddMoney() {
     setBusy(true);
     setError(null);
     try {
+      // The on-chain deposit is the success boundary: once it resolves the money has
+      // moved, so failing to record the activity row must NOT look like a failed add.
       const { transactionHash } = await deposit(amount, token);
       if (address) {
-        await accountEventsRepo.record({ tx_hash: transactionHash, address, kind: "deposit" });
+        try {
+          await accountEventsRepo.record({ tx_hash: transactionHash, address, kind: "deposit" });
+        } catch {
+          // Best-effort — the on-chain reconcile backfills this row on the next
+          // Activity load (reconcileAccountEvents), so don't surface an error.
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
       router.back();

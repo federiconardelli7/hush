@@ -14,6 +14,7 @@ import { fonts, typeScale } from "@/design-system/typography";
 import { clearDecryptionKey } from "@/features/eerc/session";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
+import { setReauthProvider, setSupabaseToken } from "@/features/supabase/client";
 
 function Row({
   icon,
@@ -58,9 +59,12 @@ export default function Me() {
   const profile = useProfile(address ?? null);
 
   // Sign out: wipe the locally-cached decryption key first (it now persists in
-  // sessionStorage — see eerc/session.ts), then end the Privy session.
+  // sessionStorage — see eerc/session.ts), drop the Supabase token + its reauth
+  // provider so nothing re-mints after logout, then end the Privy session.
   const handleSignOut = () => {
     if (address) clearDecryptionKey(address);
+    setSupabaseToken(null);
+    setReauthProvider(null);
     void logout();
   };
 

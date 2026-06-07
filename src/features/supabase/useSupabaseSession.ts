@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { WalletClient } from "viem";
 import { signInToSupabase } from "@/features/supabase/auth";
-import { supabase } from "@/features/supabase/client";
+import { setReauthProvider, supabase } from "@/features/supabase/client";
 
 export type SupabaseStatus = "idle" | "signing" | "ready" | "error";
 
@@ -29,6 +29,10 @@ export function useSupabaseSession(
       return;
     }
     boundFor.current = address;
+    // Let the supabase client silently re-mint this wallet's JWT when it expires
+    // (the embedded wallet signs without a prompt — showWalletUIs:false), so an
+    // idle tab keeps writing instead of failing with "JWT expired".
+    setReauthProvider(() => signInToSupabase(walletClient, address));
     setStatus("signing");
     setError(null);
 

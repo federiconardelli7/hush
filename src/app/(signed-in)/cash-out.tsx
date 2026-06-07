@@ -42,13 +42,19 @@ export default function CashOut() {
     setBusy(true);
     setError(null);
     try {
+      // The on-chain withdraw is the success boundary: once it resolves the money has
+      // moved, so failing to record the activity row must NOT look like a failed cash-out.
       const { transactionHash } = await withdraw(amount, token);
       if (address) {
-        await accountEventsRepo.record({
-          tx_hash: transactionHash,
-          address,
-          kind: "withdraw",
-        });
+        try {
+          await accountEventsRepo.record({
+            tx_hash: transactionHash,
+            address,
+            kind: "withdraw",
+          });
+        } catch {
+          // Best-effort — reconcile backfills this row on the next Activity load.
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ["activity"] });
       router.back();

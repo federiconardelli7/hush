@@ -27,6 +27,11 @@ export const CONTRACTS = {
   },
 } as const;
 
+// Block the converter was deployed at (F-12 Phase 1 redeploy, 2026-06-06). Bounds the
+// on-chain reconcile's getLogs scan (reconcileAccountEvents) — no deposit/withdraw can
+// predate it. Found via getCode binary search; UPDATE on any converter redeploy.
+export const CONVERTER_DEPLOY_BLOCK = 56072498n;
+
 // The converter eERC was deployed with 6 decimals (matches USDC; F-12). The UI
 // still shows/accepts cents — the extra precision sits unused for Hush-originated
 // amounts and faithfully holds odd-precision USDC received from outside.
