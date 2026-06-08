@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
-  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import type { TextStyle } from "react-native";
 import { ACTIVITY_COLS, ActivityRow } from "@/components/ActivityRow";
+import { CalendarField } from "@/components/CalendarField";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { RequestRow } from "@/components/RequestRow";
 import { Button } from "@/design-system/primitives/Button";
@@ -54,51 +54,6 @@ const parseDay = (s: string): number | null => {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(d.getTime()) ? null : d.getTime();
 };
-
-// A date field for the custom range. On web it's a real <input type="date"> (the
-// browser's native calendar popup); on native it falls back to a YYYY-MM-DD text field
-// (Phase 4 swaps in a native picker). Both emit a YYYY-MM-DD string that parseDay reads.
-function DateField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const { colors } = useTheme();
-  if (Platform.OS === "web") {
-    return (
-      <input
-        type="date"
-        lang="en-US"
-        value={value}
-        onChange={(e) => onChange(e.currentTarget.value)}
-        style={{
-          boxSizing: "border-box",
-          width: "100%",
-          fontFamily: "inherit",
-          fontSize: 13,
-          padding: "10px 12px",
-          borderRadius: radius.input,
-          border: `1px solid ${colors.line}`,
-          background: colors.card,
-          color: colors.ink,
-          outline: "none",
-        }}
-      />
-    );
-  }
-  return (
-    <TextInput
-      value={value}
-      onChangeText={onChange}
-      placeholder="YYYY-MM-DD"
-      placeholderTextColor={colors.sub}
-      autoCapitalize="none"
-      style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
-    />
-  );
-}
 
 export default function Activity() {
   const { colors } = useTheme();
@@ -316,11 +271,11 @@ export default function Activity() {
             <View style={styles.customRow}>
               <View style={styles.dateField}>
                 <Text style={[styles.dateLabel, { color: colors.sub }]}>From</Text>
-                <DateField value={fromStr} onChange={onFrom} />
+                <CalendarField value={fromStr} onChange={onFrom} />
               </View>
               <View style={styles.dateField}>
                 <Text style={[styles.dateLabel, { color: colors.sub }]}>To</Text>
-                <DateField value={toStr} onChange={onTo} />
+                <CalendarField value={toStr} onChange={onTo} align="right" />
               </View>
               {fromStr || toStr ? (
                 <Pressable onPress={clearCustom} style={styles.clearBtn}>
@@ -567,18 +522,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchBoxInput: { flex: 1, fontFamily: fonts.ui, fontSize: 13, padding: 0 },
-  datePanel: { marginTop: spacing.md, marginBottom: spacing.md, gap: spacing.sm },
+  datePanel: { marginTop: spacing.md, marginBottom: spacing.md, gap: spacing.sm, zIndex: 30 },
   customRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, flexWrap: "wrap" },
-  dateInput: {
-    fontFamily: fonts.mono,
-    fontSize: 13,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    flexGrow: 1,
-    minWidth: 130,
-  },
   dateField: { flexGrow: 1, flexBasis: 130, gap: 4 },
   dateLabel: { fontFamily: fonts.ui, fontSize: 11.5, fontWeight: "600" },
   clearBtn: { paddingHorizontal: 12, paddingVertical: 11, alignSelf: "flex-end" },
