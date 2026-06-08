@@ -104,6 +104,11 @@ export default function Me() {
           onPress={() => router.push("/export-wallet")}
         />
         <Row
+          icon={<Feather name="bell" size={18} color={colors.sub} />}
+          label="Notifications"
+          onPress={() => router.push("/notification-settings")}
+        />
+        <Row
           icon={<Feather name="users" size={18} color={colors.sub} />}
           label="Contacts"
           onPress={() => router.push("/contacts")}
@@ -194,6 +199,11 @@ export default function Me() {
             icon={<Feather name="key" size={18} color={colors.sub} />}
             label="Export private key"
             onPress={() => router.push("/export-wallet")}
+          />
+          <Row
+            icon={<Feather name="bell" size={18} color={colors.sub} />}
+            label="Notifications"
+            onPress={() => router.push("/notification-settings")}
           />
           <Row
           icon={<Feather name="users" size={18} color={colors.sub} />}

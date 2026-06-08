@@ -44,6 +44,21 @@ export const commentsRepo = {
     return (data ?? []) as { payment_tx_hash: string }[];
   },
 
+  // Full comments for a set of payments (newest-first) — for notification derivation
+  // (likes/comments on the current wallet's own payments).
+  async listForPayments(txHashes: string[]): Promise<Comment[]> {
+    if (txHashes.length === 0) return [];
+    const { data, error } = await supabase
+      .from("comments")
+      .select(COLUMNS)
+      .in("payment_tx_hash", txHashes)
+      .order("created_at", { ascending: false });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Comment[];
+  },
+
   async add(txHash: string, author: string, body: string): Promise<Comment> {
     const clean = bodySchema.parse(body);
     const { data, error } = await supabase

@@ -22,6 +22,8 @@ const META: Record<string, { icon: FeatherName; color: ColorKey; verb: string }>
   request: { icon: "arrow-up-right", color: "actBlue", verb: " requested money" },
   outgoing: { icon: "clock", color: "sub", verb: " — you asked" },
   declined: { icon: "slash", color: "avRed", verb: " declined your request" },
+  liked: { icon: "heart", color: "avRed", verb: " liked your payment" },
+  commented: { icon: "message-circle", color: "actBlue", verb: " commented on your payment" },
 };
 
 // One inbox row. Received → tap to its receipt. Incoming request → decrypted amount + a
@@ -81,6 +83,23 @@ export function NotificationRow({
     });
   };
 
+  // liked/commented (on my payment) → the public thread for that payment.
+  const openThread = () => {
+    onRead?.();
+    router.push({
+      pathname: "/payment-thread",
+      params: {
+        txHash: item.txHash ?? "",
+        senderName: item.paymentSenderName ?? "",
+        senderAddress: item.paymentSenderAddress ?? "",
+        receiverName: item.paymentReceiverName ?? "",
+        receiverAddress: item.paymentReceiverAddress ?? "",
+        caption: item.caption ?? "",
+        createdAt: item.created_at,
+      },
+    });
+  };
+
   let sub: string | null = null;
   if (item.kind === "declined" && item.declineReason) sub = `“${item.declineReason}”`;
   else if (item.kind === "outgoing")
@@ -89,6 +108,7 @@ export function NotificationRow({
         ? `reminded ${relativeShort(item.lastRemindedAt)}`
         : `asked ${relativeShort(item.created_at)}`
     }`;
+  else if (item.kind === "commented" && item.commentBody) sub = item.commentBody;
   else if (item.note) sub = item.note;
 
   let right: ReactNode = (
@@ -161,6 +181,13 @@ export function NotificationRow({
   if (item.kind === "received") {
     return (
       <Pressable onPress={openReceipt} style={rowStyle}>
+        {body}
+      </Pressable>
+    );
+  }
+  if (item.kind === "liked" || item.kind === "commented") {
+    return (
+      <Pressable onPress={openThread} style={rowStyle}>
         {body}
       </Pressable>
     );
