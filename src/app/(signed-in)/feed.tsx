@@ -13,6 +13,7 @@ import { fonts, typeScale } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
 import type { FeedItem } from "@/features/payments/useFeed";
 import { useFeed } from "@/features/payments/useFeed";
+import { useFeedSocial } from "@/features/social/useFeedSocial";
 import { displayName } from "@/lib/identity";
 
 const SCOPES = ["Friends", "Public", "You"] as const;
@@ -32,6 +33,12 @@ export default function Feed() {
   const [scope, setScope] = useState(0);
   const me = address?.toLowerCase();
 
+  // Batched like/comment tallies for every loaded payment (filtering is display-only,
+  // so social is fetched for the full set). RLS keeps it to visible payments.
+  const txHashes = (feed.data ?? []).map((p) => p.tx_hash);
+  const feedSocial = useFeedSocial(txHashes, me);
+  const socialMap = feedSocial.data ?? {};
+
   const items = (feed.data ?? []).filter((p) => {
     if (SCOPES[scope] === "Public") return p.audience === "public";
     if (SCOPES[scope] === "You") {
@@ -40,11 +47,35 @@ export default function Feed() {
     return p.audience === "friends";
   });
 
-  // One row renderer shared by the mobile FlatList and the desktop column: rows the
-  // signed-in user is party to deep-link to their receipt; everything else is read-only.
+  // One row renderer shared by the mobile FlatList and the desktop column. Every row
+  // carries the like/comment action bar and opens the public thread; rows the signed-in
+  // user is party to keep their tap → receipt (amount + proof), others tap → thread.
   const renderRow = (item: FeedItem) => {
     const mine = item.sender_address === me || item.receiver_address === me;
-    if (!mine) return <FeedRow item={item} />;
+    const openThread = () =>
+      router.push({
+        pathname: "/payment-thread",
+        params: {
+          txHash: item.tx_hash,
+          senderName: displayName(item.sender, item.sender_address),
+          senderAddress: item.sender_address,
+          receiverName: displayName(item.receiver, item.receiver_address),
+          receiverAddress: item.receiver_address,
+          caption: item.caption ?? "",
+          createdAt: item.created_at,
+        },
+      });
+    const row = (
+      <FeedRow
+        item={item}
+        social={socialMap[item.tx_hash]}
+        me={me}
+        onOpenThread={openThread}
+      />
+    );
+    if (!mine) {
+      return <Pressable onPress={openThread}>{row}</Pressable>;
+    }
     const kind = item.sender_address === me ? "sent" : "received";
     const counterparty = kind === "sent" ? item.receiver : item.sender;
     const counterpartyAddress =
@@ -65,7 +96,7 @@ export default function Feed() {
           })
         }
       >
-        <FeedRow item={item} />
+        {row}
       </Pressable>
     );
   };
@@ -113,54 +144,12 @@ export default function Feed() {
     <ScreenContainer>
       <Text style={[typeScale.screenTitle, { color: colors.ink }]}>Feed</Text>
 
-      <View style={styles.segment}>
-        {SCOPES.map((s, i) => {
-          const on = i === scope;
-          return (
-            <Pressable
-              key={s}
-              onPress={() => setScope(i)}
-              style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
-            >
-              <Text style={[styles.segText, { color: on ? colors.bg : colors.sub }]}>
-                {s}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {segment}
 
       <FlatList
         data={items}
         keyExtractor={(p) => p.tx_hash}
-        renderItem={({ item }) => {
-          const mine =
-            item.sender_address === me || item.receiver_address === me;
-          if (!mine) return <FeedRow item={item} />;
-          const kind = item.sender_address === me ? "sent" : "received";
-          const counterparty = kind === "sent" ? item.receiver : item.sender;
-          const counterpartyAddress =
-            kind === "sent" ? item.receiver_address : item.sender_address;
-          return (
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/receipt",
-                  params: {
-                    txHash: item.tx_hash,
-                    kind,
-                    name: displayName(counterparty, counterpartyAddress),
-                    address: counterpartyAddress,
-                    caption: item.caption ?? "",
-                    createdAt: item.created_at,
-                  },
-                })
-              }
-            >
-              <FeedRow item={item} />
-            </Pressable>
-          );
-        }}
+        renderItem={({ item }) => renderRow(item)}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl

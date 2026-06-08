@@ -1,10 +1,12 @@
 import Feather from "@expo/vector-icons/Feather";
-import { StyleSheet, Text, View } from "react-native";
+import { type GestureResponderEvent, Pressable, StyleSheet, Text, View } from "react-native";
+import { LikeButton } from "@/components/LikeButton";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import type { FeedItem } from "@/features/payments/useFeed";
+import type { FeedSocial } from "@/features/social/useFeedSocial";
 import { displayName } from "@/lib/identity";
 
 function timeAgo(iso: string): string {
@@ -15,12 +17,29 @@ function timeAgo(iso: string): string {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-// A feed card: who paid whom, time, the lock "Hidden" chip (amount never shown), and
-// the optional public caption.
-export function FeedRow({ item }: { item: FeedItem }) {
+// A feed card: who paid whom, time, the lock "Hidden" chip (amount never shown), the
+// optional public caption, and — when social data is supplied — a like + comment action
+// bar. The heart toggles in place; the comment pill opens the payment thread. Both stop
+// propagation so they don't also fire an enclosing row Pressable.
+export function FeedRow({
+  item,
+  social,
+  me,
+  onOpenThread,
+}: {
+  item: FeedItem;
+  social?: FeedSocial;
+  me?: string;
+  onOpenThread?: () => void;
+}) {
   const { colors } = useTheme();
   const sender = displayName(item.sender, item.sender_address);
   const receiver = displayName(item.receiver, item.receiver_address);
+
+  const openThread = (e: GestureResponderEvent) => {
+    e.stopPropagation();
+    onOpenThread?.();
+  };
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -44,6 +63,24 @@ export function FeedRow({ item }: { item: FeedItem }) {
       {item.caption ? (
         <Text style={[styles.note, { color: colors.ink }]}>{item.caption}</Text>
       ) : null}
+      {social && onOpenThread ? (
+        <View style={[styles.actions, { borderTopColor: colors.line }]}>
+          <LikeButton
+            txHash={item.tx_hash}
+            liked={social.likedByMe}
+            count={social.likeCount}
+            me={me}
+          />
+          <Pressable onPress={openThread} style={styles.commentBtn} hitSlop={8}>
+            <Feather name="message-circle" size={16} color={colors.sub} />
+            {social.commentCount > 0 ? (
+              <Text style={[styles.count, { color: colors.sub }]}>
+                {social.commentCount}
+              </Text>
+            ) : null}
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -65,4 +102,14 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: fonts.ui, fontSize: 11, fontWeight: "600" },
   note: { fontFamily: fonts.ui, fontSize: 14, marginTop: 11 },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
+    marginTop: 12,
+    paddingTop: 11,
+    borderTopWidth: 1,
+  },
+  commentBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  count: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
 });
