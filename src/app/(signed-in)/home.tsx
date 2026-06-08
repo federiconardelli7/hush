@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ActivityRow } from "@/components/ActivityRow";
 import { BalanceCard } from "@/components/BalanceCard";
 import { DesktopScreen } from "@/components/DesktopScreen";
@@ -14,7 +14,7 @@ import { useIsWide } from "@/design-system/useResponsive";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useReadIds } from "@/features/notifications/seen";
 import { isUnreadKind, useNotifications } from "@/features/notifications/useNotifications";
-import { useActivity } from "@/features/payments/useActivity";
+import { useActivity, type ActivityEntry } from "@/features/payments/useActivity";
 import { displayName } from "@/lib/identity";
 import { formatTokenAmount } from "@/lib/money";
 
@@ -98,11 +98,27 @@ export default function Home() {
     { key: "cashout", icon: "dollar-sign", label: "Cash out", onPress: () => router.push("/cash-out") },
   ];
 
+  // Recent-activity preview — shared by desktop + mobile; openReceipt opens a row's receipt.
+  const recent = (activity.data ?? []).slice(0, 5);
+  const openReceipt = (p: ActivityEntry) =>
+    router.push({
+      pathname: "/receipt",
+      params: {
+        txHash: p.tx_hash,
+        kind: p.kind,
+        name:
+          p.kind === "deposit" || p.kind === "withdraw"
+            ? ""
+            : displayName(p.counterparty, p.counterpartyAddress ?? ""),
+        address: p.counterpartyAddress ?? "",
+        caption: p.caption ?? "",
+        createdAt: p.created_at,
+      },
+    });
+
   // Desktop only kicks in once registered + unlocked; the loading/register/unlock
   // gates below stay on the shared mobile return so the eERC flow is identical.
   if (isWide && balanceUnlocked) {
-    const recent = (activity.data ?? []).slice(0, 5);
-
     return (
       <DesktopScreen title="Home" maxWidth={760}>
         <View style={[styles.balanceCard, { backgroundColor: "#16161B" }, shadow.card]}>
@@ -162,22 +178,7 @@ export default function Home() {
             recent.map((p, i) => (
               <Pressable
                 key={p.tx_hash}
-                onPress={() =>
-                  router.push({
-                    pathname: "/receipt",
-                    params: {
-                      txHash: p.tx_hash,
-                      kind: p.kind,
-                      name:
-                        p.kind === "deposit" || p.kind === "withdraw"
-                          ? ""
-                          : displayName(p.counterparty, p.counterpartyAddress ?? ""),
-                      address: p.counterpartyAddress ?? "",
-                      caption: p.caption ?? "",
-                      createdAt: p.created_at,
-                    },
-                  })
-                }
+                onPress={() => openReceipt(p)}
                 style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}
               >
                 <ActivityRow item={p} />
@@ -204,58 +205,90 @@ export default function Home() {
           ) : null}
         </Pressable>
       </View>
-      <BalanceCard
-        rows={eerc.balances.map((b) => ({
-          symbol: b.token.symbol,
-          text: balanceUnlocked ? formatTokenAmount(b.parsed || "0", b.token) : "••••",
-        }))}
-      />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <BalanceCard
+          rows={eerc.balances.map((b) => ({
+            symbol: b.token.symbol,
+            text: balanceUnlocked ? formatTokenAmount(b.parsed || "0", b.token) : "••••",
+          }))}
+        />
 
-      {!eerc.isRegistered ? (
-        <View style={styles.gate}>
-          <Text style={[styles.note, { color: colors.sub }]}>
-            Finish setting up your private account — one signature plus a quick
-            on-chain step. Amounts stay encrypted.
-          </Text>
-          <Button
-            label={busy === "register" ? "Preparing private setup…" : "Finish setup"}
-            variant="primary"
-            onPress={() => run("register")}
-          />
-        </View>
-      ) : !eerc.isDecryptionKeySet ? (
-        <View style={styles.gate}>
-          <Text style={[styles.note, { color: colors.sub }]}>
-            Unlock your balance with a quick signature — it never leaves this
-            device.
-          </Text>
-          <Button
-            label={busy === "unlock" ? "Unlocking…" : "Show balance"}
-            variant="primary"
-            onPress={() => run("unlock")}
-          />
-        </View>
-      ) : (
-        <View style={styles.actionsRow}>
-          {actions.map((a) => (
-            <Pressable key={a.key} onPress={a.onPress} style={styles.actionItem}>
-              <View
-                style={[
-                  styles.actionCircle,
-                  { backgroundColor: a.primary ? colors.actBlue : colors.chip },
-                ]}
-              >
-                <Feather name={a.icon} size={22} color={a.primary ? "#fff" : colors.ink} />
-              </View>
-              <Text style={[styles.actionCaption, { color: colors.sub }]}>{a.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
+        {!eerc.isRegistered ? (
+          <View style={styles.gate}>
+            <Text style={[styles.note, { color: colors.sub }]}>
+              Finish setting up your private account — one signature plus a quick
+              on-chain step. Amounts stay encrypted.
+            </Text>
+            <Button
+              label={busy === "register" ? "Preparing private setup…" : "Finish setup"}
+              variant="primary"
+              onPress={() => run("register")}
+            />
+          </View>
+        ) : !eerc.isDecryptionKeySet ? (
+          <View style={styles.gate}>
+            <Text style={[styles.note, { color: colors.sub }]}>
+              Unlock your balance with a quick signature — it never leaves this
+              device.
+            </Text>
+            <Button
+              label={busy === "unlock" ? "Unlocking…" : "Show balance"}
+              variant="primary"
+              onPress={() => run("unlock")}
+            />
+          </View>
+        ) : (
+          <>
+            <View style={styles.actionsRow}>
+              {actions.map((a) => (
+                <Pressable key={a.key} onPress={a.onPress} style={styles.actionItem}>
+                  <View
+                    style={[
+                      styles.actionCircle,
+                      { backgroundColor: a.primary ? colors.actBlue : colors.chip },
+                    ]}
+                  >
+                    <Feather name={a.icon} size={22} color={a.primary ? "#fff" : colors.ink} />
+                  </View>
+                  <Text style={[styles.actionCaption, { color: colors.sub }]}>{a.label}</Text>
+                </Pressable>
+              ))}
+            </View>
 
-      {error ? (
-        <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
-      ) : null}
+            {recent.length > 0 ? (
+              <>
+                <View style={styles.activityHeader}>
+                  <Text style={[styles.activityTitle, { color: colors.ink }]}>
+                    Recent activity
+                  </Text>
+                  <Pressable onPress={() => router.push("/activity")} style={styles.seeAllWrap}>
+                    <Text style={[styles.seeAll, { color: colors.actBlue }]}>See all</Text>
+                  </Pressable>
+                </View>
+                <View style={[styles.activityCard, { backgroundColor: colors.card }]}>
+                  {recent.map((p, i) => (
+                    <Pressable
+                      key={p.tx_hash}
+                      onPress={() => openReceipt(p)}
+                      style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}
+                    >
+                      <ActivityRow item={p} />
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </>
+        )}
+
+        {error ? (
+          <Text style={[styles.error, { color: colors.avRed }]}>{error}</Text>
+        ) : null}
+      </ScrollView>
     </ScreenContainer>
   );
 }
@@ -279,6 +312,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   gate: { gap: spacing.md, marginTop: spacing.lg },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: spacing.lg },
   note: { fontFamily: fonts.ui, fontSize: 14, lineHeight: 21, textAlign: "center" },
   actionsRow: {
     flexDirection: "row",
