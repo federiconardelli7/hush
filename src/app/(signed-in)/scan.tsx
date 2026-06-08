@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { ComingSoon } from "@/components/ComingSoon";
@@ -41,6 +41,16 @@ function WebScan() {
   const [manual, setManual] = useState("");
   const handled = useRef(false);
 
+  // Gate the camera on focus: /scan is a kept-mounted tab screen, so without this the
+  // camera (and its indicator light) keeps running after you switch tabs or go back.
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
   const resolve = useCallback(
     async (raw: string) => {
       if (handled.current) {
@@ -77,7 +87,7 @@ function WebScan() {
     [isAdd, mode, me],
   );
 
-  const scanner = useQrScanner(true, (text) => {
+  const scanner = useQrScanner(focused, (text) => {
     void resolve(text);
   });
 
