@@ -323,6 +323,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 10,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
     borderTopWidth: 1,
   },
   input: {

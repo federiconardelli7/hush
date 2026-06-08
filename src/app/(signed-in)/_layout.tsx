@@ -12,7 +12,7 @@ import { ProfileGate } from "@/features/profile/ProfileGate";
 const TAB_ICON: Record<string, keyof typeof Feather.glyphMap> = {
   home: "home",
   activity: "activity",
-  pay: "plus-circle",
+  pay: "send",
   feed: "globe",
   me: "user",
 };
