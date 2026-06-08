@@ -249,7 +249,9 @@ export default function Home() {
                   <View
                     style={[
                       styles.actionCircle,
-                      { backgroundColor: a.primary ? colors.actBlue : colors.chip },
+                      a.primary
+                        ? [{ backgroundColor: colors.actBlue }, shadow.buttonBlue]
+                        : [{ backgroundColor: colors.card, borderColor: colors.line }, styles.actionCircleGhost, shadow.card],
                     ]}
                   >
                     <Feather name={a.icon} size={22} color={a.primary ? "#fff" : colors.ink} />
@@ -329,6 +331,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  actionCircleGhost: { borderWidth: 1 },
   actionCaption: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   error: {
     fontFamily: fonts.ui,
