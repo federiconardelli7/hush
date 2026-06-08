@@ -33,6 +33,7 @@ export default function Contact() {
   const contactAddress = (address ?? "").toLowerCase();
   const queryClient = useQueryClient();
   const [revealed, setRevealed] = useState(false);
+  const [mode, setMode] = useState<"pay" | "request">("pay");
 
   const profile = useQuery({
     queryKey: ["profile", contactAddress],
@@ -87,12 +88,32 @@ export default function Contact() {
           </Pressable>
         </View>
 
+        <View style={styles.modeRow}>
+          {([false, true] as const).map((req) => {
+            const on = req === (mode === "request");
+            return (
+              <Pressable
+                key={req ? "request" : "pay"}
+                onPress={() => setMode(req ? "request" : "pay")}
+                style={[styles.modeSeg, { backgroundColor: on ? colors.ink : colors.chip }]}
+              >
+                <Text style={[styles.modeSegText, { color: on ? colors.bg : colors.sub }]}>
+                  {req ? "Request" : "Pay"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <Button
-          label={`Pay ${nickname ?? ""}`.trim()}
+          label={
+            mode === "request"
+              ? `Request from ${nickname ?? ""}`.trim()
+              : `Pay ${nickname ?? ""}`.trim()
+          }
           variant="primary"
           onPress={() =>
             router.push({
-              pathname: "/pay-amount",
+              pathname: mode === "request" ? "/request-amount" : "/pay-amount",
               params: { to: contactAddress, name: nickname },
             })
           }
@@ -182,7 +203,10 @@ const styles = StyleSheet.create({
   },
   addr: { fontFamily: fonts.mono, fontSize: 11.5 },
   reveal: { fontFamily: fonts.ui, fontSize: 11.5, fontWeight: "600" },
-  pay: { marginTop: spacing.lg },
+  modeRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
+  modeSeg: { flex: 1, paddingVertical: 11, borderRadius: radius.pill, alignItems: "center" },
+  modeSegText: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "700" },
+  pay: { marginTop: spacing.sm },
   sinceCard: {
     flexDirection: "row",
     alignItems: "center",

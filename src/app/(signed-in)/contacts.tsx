@@ -125,8 +125,9 @@ export default function Contacts() {
         ) : (
           <View style={styles.grid}>
             {list.map((item) => (
-              <View
+              <Pressable
                 key={item.contact_address}
+                onPress={() => openContact(item)}
                 style={[styles.card, { backgroundColor: colors.card, borderColor: colors.line }]}
               >
                 <Avatar name={item.nickname} size={42} />
@@ -140,13 +141,7 @@ export default function Contacts() {
                     </Text>
                   ) : null}
                 </View>
-                <Pressable
-                  onPress={() => openContact(item)}
-                  style={[styles.payChip, { backgroundColor: colors.chip }]}
-                >
-                  <Text style={[styles.payChipLabel, { color: colors.ink }]}>Pay</Text>
-                </Pressable>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}
@@ -225,6 +220,4 @@ const styles = StyleSheet.create({
   cardWho: { flex: 1, minWidth: 0 },
   cardName: { fontFamily: fonts.ui, fontSize: 14.5, fontWeight: "600" },
   cardHandle: { fontFamily: fonts.mono, fontSize: 11.5 },
-  payChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999 },
-  payChipLabel: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
 });
