@@ -1,9 +1,10 @@
 import type { WalletClient } from "viem";
 import { setSupabaseToken } from "@/features/supabase/client";
+import { backendBaseUrl } from "@/features/backend/baseUrl";
 
-// Prod: same-origin Vercel `/api` functions. Local dev: set EXPO_PUBLIC_FAUCET_URL
-// to the dev faucet (http://localhost:8788).
-const BACKEND_URL = process.env.EXPO_PUBLIC_FAUCET_URL ?? "/api";
+// Same-origin Vercel `/api` in prod; the dev faucet (http://localhost:8788) only
+// when served from localhost — see backendBaseUrl.
+const BACKEND_URL = backendBaseUrl();
 
 // Binds the embedded wallet to Supabase: prove control of the EOA by signing a
 // single-use server nonce, then exchange the signature for a Supabase JWT that
