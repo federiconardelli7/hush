@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -54,6 +55,51 @@ const parseDay = (s: string): number | null => {
   return Number.isNaN(d.getTime()) ? null : d.getTime();
 };
 
+// A date field for the custom range. On web it's a real <input type="date"> (the
+// browser's native calendar popup); on native it falls back to a YYYY-MM-DD text field
+// (Phase 4 swaps in a native picker). Both emit a YYYY-MM-DD string that parseDay reads.
+function DateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { colors } = useTheme();
+  if (Platform.OS === "web") {
+    return (
+      <input
+        type="date"
+        lang="en-US"
+        value={value}
+        onChange={(e) => onChange(e.currentTarget.value)}
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          fontFamily: "inherit",
+          fontSize: 13,
+          padding: "10px 12px",
+          borderRadius: radius.input,
+          border: `1px solid ${colors.line}`,
+          background: colors.card,
+          color: colors.ink,
+          outline: "none",
+        }}
+      />
+    );
+  }
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder="YYYY-MM-DD"
+      placeholderTextColor={colors.sub}
+      autoCapitalize="none"
+      style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
+    />
+  );
+}
+
 export default function Activity() {
   const { colors } = useTheme();
   const isWide = useIsWide();
@@ -94,13 +140,29 @@ export default function Activity() {
     }
   };
 
-  const applyCustom = () => {
-    const f = parseDay(fromStr);
-    const t = parseDay(toStr);
-    if (f == null && t == null) return;
-    setCustom({ from: f ?? 0, to: t != null ? t + DAY - 1 : now });
-    setRange("custom");
-    setShowDate(false);
+  // Custom range auto-applies as you pick dates (no separate Apply step). A single
+  // missing bound is open-ended (from = epoch, to = now); Clear resets to no constraint.
+  const setCustomRange = (f: string, t: string) => {
+    const fromMs = parseDay(f);
+    const toMs = parseDay(t);
+    setCustom(
+      fromMs == null && toMs == null
+        ? null
+        : { from: fromMs ?? 0, to: toMs != null ? toMs + DAY - 1 : now },
+    );
+  };
+  const onFrom = (v: string) => {
+    setFromStr(v);
+    setCustomRange(v, toStr);
+  };
+  const onTo = (v: string) => {
+    setToStr(v);
+    setCustomRange(fromStr, v);
+  };
+  const clearCustom = () => {
+    setFromStr("");
+    setToStr("");
+    setCustom(null);
   };
 
   const noPaymentsCopy = search.trim()
@@ -234,7 +296,12 @@ export default function Activity() {
                   key={r.id}
                   onPress={() => {
                     setRange(r.id);
-                    if (r.id !== "custom") setShowDate(false);
+                    if (r.id !== "custom") {
+                      setShowDate(false);
+                      setCustom(null);
+                      setFromStr("");
+                      setToStr("");
+                    }
                   }}
                   style={[styles.seg, { backgroundColor: on ? colors.ink : colors.chip }]}
                 >
@@ -247,25 +314,19 @@ export default function Activity() {
           </View>
           {range === "custom" ? (
             <View style={styles.customRow}>
-              <TextInput
-                value={fromStr}
-                onChangeText={setFromStr}
-                placeholder="From  YYYY-MM-DD"
-                placeholderTextColor={colors.sub}
-                autoCapitalize="none"
-                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
-              />
-              <TextInput
-                value={toStr}
-                onChangeText={setToStr}
-                placeholder="To  YYYY-MM-DD"
-                placeholderTextColor={colors.sub}
-                autoCapitalize="none"
-                style={[styles.dateInput, { backgroundColor: colors.card, color: colors.ink, borderColor: colors.line }]}
-              />
-              <Pressable onPress={applyCustom} style={[styles.apply, { backgroundColor: colors.actBlue }]}>
-                <Text style={styles.applyText}>Apply</Text>
-              </Pressable>
+              <View style={styles.dateField}>
+                <Text style={[styles.dateLabel, { color: colors.sub }]}>From</Text>
+                <DateField value={fromStr} onChange={onFrom} />
+              </View>
+              <View style={styles.dateField}>
+                <Text style={[styles.dateLabel, { color: colors.sub }]}>To</Text>
+                <DateField value={toStr} onChange={onTo} />
+              </View>
+              {fromStr || toStr ? (
+                <Pressable onPress={clearCustom} style={styles.clearBtn}>
+                  <Text style={[styles.clearText, { color: colors.actBlue }]}>Clear</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -470,7 +531,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    rowGap: spacing.md,
+    columnGap: spacing.sm,
     marginVertical: spacing.md,
   },
   filterChips: {
@@ -479,7 +541,8 @@ const styles = StyleSheet.create({
     flexBasis: "auto",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    rowGap: spacing.md,
+    columnGap: spacing.sm,
   },
   mobileTitle: { marginBottom: spacing.xs },
   datePill: {
@@ -504,8 +567,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchBoxInput: { flex: 1, fontFamily: fonts.ui, fontSize: 13, padding: 0 },
-  datePanel: { marginTop: spacing.md, gap: spacing.sm },
-  customRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  datePanel: { marginTop: spacing.md, marginBottom: spacing.md, gap: spacing.sm },
+  customRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, flexWrap: "wrap" },
   dateInput: {
     fontFamily: fonts.mono,
     fontSize: 13,
@@ -516,8 +579,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minWidth: 130,
   },
-  apply: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: radius.button },
-  applyText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "700", color: "#fff" },
+  dateField: { flexGrow: 1, flexBasis: 130, gap: 4 },
+  dateLabel: { fontFamily: fonts.ui, fontSize: 11.5, fontWeight: "600" },
+  clearBtn: { paddingHorizontal: 12, paddingVertical: 11, alignSelf: "flex-end" },
+  clearText: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "700" },
   segment: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginVertical: spacing.md },
   seg: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: radius.pill },
   segText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
