@@ -55,6 +55,14 @@ export function formatRowDateTime(iso: string): string {
   });
 }
 
+// Short date for a row, e.g. "8 Jun".
+export function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 // Short relative time, e.g. "just now", "5m ago", "3h ago", "2d ago".
 export function relativeShort(iso: string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);

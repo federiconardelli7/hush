@@ -6,7 +6,7 @@ import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
-import { formatRowDateTime, formatTimeOfDay } from "@/features/payments/dateGroups";
+import { formatRowDateTime, formatShortDate } from "@/features/payments/dateGroups";
 import type { ActivityEntry } from "@/features/payments/useActivity";
 import { displayName } from "@/lib/identity";
 import { formatSignedToken } from "@/lib/money";
@@ -179,7 +179,7 @@ export function ActivityRow({
           <Text style={[styles.tokenTag, { color: colors.sub }]}>{tokenSym}</Text>
         ) : null}
         <Text style={[styles.time, { color: colors.sub }]}>
-          {formatTimeOfDay(item.created_at)}
+          {formatShortDate(item.created_at)}
         </Text>
       </View>
     </View>
