@@ -6,12 +6,14 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { applyAmountKey, Keypad } from "@/components/Keypad";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TokenChip } from "@/components/TokenChip";
 import { Button } from "@/design-system/primitives/Button";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
+import { DEFAULT_TOKEN } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { requestsRepo } from "@/features/requests/requestsRepo";
 
@@ -22,6 +24,7 @@ export default function RequestAmount() {
   const me = address?.toLowerCase();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("");
+  const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
   const [memo, setMemo] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,7 @@ export default function RequestAmount() {
   useFocusEffect(
     useCallback(() => {
       setAmount("");
+      setToken(DEFAULT_TOKEN.address);
       setMemo("");
       setBusy(false);
       setError(null);
@@ -58,6 +62,7 @@ export default function RequestAmount() {
         requestee_address: recipient,
         amount_enc_requestee: encRequestee,
         amount_enc_requester: encRequester,
+        token_address: token,
         note: memo.trim() || undefined,
       });
       await Promise.all([
@@ -131,6 +136,7 @@ export default function RequestAmount() {
             <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
             {amount || "0"}
           </Text>
+          <TokenChip value={token} onChange={setToken} />
         </View>
 
         <TextInput
@@ -172,6 +178,7 @@ export default function RequestAmount() {
           <Text style={[styles.dollar, { color: colors.sub }]}>$</Text>
           {amount || "0"}
         </Text>
+        <TokenChip value={token} onChange={setToken} />
       </View>
 
       <TextInput
@@ -205,7 +212,7 @@ export default function RequestAmount() {
 }
 
 const styles = StyleSheet.create({
-  amountWrap: { alignItems: "center", marginTop: spacing.xl, gap: spacing.sm },
+  amountWrap: { alignItems: "center", marginTop: spacing.xl, gap: spacing.sm, zIndex: 20 },
   amountWrapWide: { marginTop: spacing.xl + spacing.sm },
   amount: { fontFamily: fonts.display },
   dollar: { fontSize: 34, fontWeight: "700" },

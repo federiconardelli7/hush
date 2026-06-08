@@ -9,6 +9,7 @@ const createSchema = z.object({
   requestee_address: z.string(),
   amount_enc_requestee: z.array(z.string()).length(7),
   amount_enc_requester: z.array(z.string()).length(7),
+  token_address: z.string().optional(),
   note: z.string().trim().max(200).nullable().optional(),
 });
 export type CreateRequestInput = z.infer<typeof createSchema>;
@@ -21,6 +22,7 @@ export type MoneyRequest = {
   requestee_address: string;
   amount_enc_requestee: string[];
   amount_enc_requester: string[];
+  token_address: string | null;
   status: RequestStatus;
   tx_hash: string | null;
   decline_reason: string | null;
@@ -31,7 +33,7 @@ export type MoneyRequest = {
 };
 
 const COLUMNS =
-  "id, requester_address, requestee_address, amount_enc_requestee, amount_enc_requester, status, tx_hash, decline_reason, declined_at, note, created_at";
+  "id, requester_address, requestee_address, amount_enc_requestee, amount_enc_requester, token_address, status, tx_hash, decline_reason, declined_at, note, created_at";
 
 export const requestsRepo = {
   async create(input: CreateRequestInput): Promise<MoneyRequest> {
@@ -43,6 +45,7 @@ export const requestsRepo = {
         requestee_address: r.requestee_address.toLowerCase(),
         amount_enc_requestee: r.amount_enc_requestee,
         amount_enc_requester: r.amount_enc_requester,
+        token_address: r.token_address ? r.token_address.toLowerCase() : null,
         note: r.note && r.note.length > 0 ? r.note : null,
       })
       .select(COLUMNS)

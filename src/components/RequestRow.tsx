@@ -8,6 +8,7 @@ import { Avatar } from "@/design-system/primitives/Avatar";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
+import { tokenByAddress } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { formatRowDateTime } from "@/features/payments/dateGroups";
 import { requestsRepo } from "@/features/requests/requestsRepo";
@@ -52,6 +53,7 @@ export function RequestRow({
   });
 
   const locked = !eerc.isDecryptionKeySet;
+  const tokenSym = tokenByAddress(item.token_address ?? undefined)?.symbol;
   let amountText: string;
   if (amount.isPending) amountText = "···";
   else if (amount.data == null) amountText = "—";
@@ -81,7 +83,14 @@ export function RequestRow({
     if (amount.data == null) return;
     router.push({
       pathname: "/pay-amount",
-      params: { to: item.requester_address, name, requestId: item.id, amount: amount.data, note: item.note ?? "" },
+      params: {
+        to: item.requester_address,
+        name,
+        requestId: item.id,
+        amount: amount.data,
+        note: item.note ?? "",
+        token: item.token_address ?? "",
+      },
     });
   };
 
@@ -127,7 +136,12 @@ export function RequestRow({
         {locked ? (
           <Feather name="lock" size={16} color={colors.sub} />
         ) : (
-          <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+          <View style={styles.amountCol}>
+            <Text style={[styles.amount, { color: colors.ink }]}>{amountText}</Text>
+            {tokenSym ? (
+              <Text style={[styles.tokenTag, { color: colors.sub }]}>{tokenSym}</Text>
+            ) : null}
+          </View>
         )}
       </View>
 
@@ -217,6 +231,8 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.ui, fontSize: 12, flexShrink: 1 },
   dirBadge: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   amount: { fontFamily: fonts.ui, fontSize: 16, fontWeight: "700" },
+  amountCol: { alignItems: "flex-end" },
+  tokenTag: { fontFamily: fonts.ui, fontSize: 10.5, fontWeight: "700", marginTop: 1 },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md, flexWrap: "wrap" },
   chip: {
     fontFamily: fonts.ui,

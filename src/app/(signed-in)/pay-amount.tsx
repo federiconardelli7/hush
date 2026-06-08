@@ -12,7 +12,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts, typeScale } from "@/design-system/typography";
 import { useIsWide } from "@/design-system/useResponsive";
-import { DEFAULT_TOKEN } from "@/features/eerc/tokens/registry";
+import { DEFAULT_TOKEN, tokenByAddress } from "@/features/eerc/tokens/registry";
 import { useEerc } from "@/features/eerc/useEerc";
 import { AUDIENCES, paymentsRepo, type Audience } from "@/features/payments/paymentsRepo";
 import { requestsRepo } from "@/features/requests/requestsRepo";
@@ -27,22 +27,28 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
 
 export default function PayAmount() {
   const { colors } = useTheme();
-  const { to, name, requestId, amount: amountParam, note: noteParam } = useLocalSearchParams<{
+  const { to, name, requestId, amount: amountParam, note: noteParam, token: tokenParam } = useLocalSearchParams<{
     to: string;
     name?: string;
     requestId?: string;
     amount?: string;
     note?: string;
+    token?: string;
   }>();
   const prefill = typeof amountParam === "string" ? amountParam : "";
   // Paying a request: default the memo to the request's note so the Sent activity row
   // explains the payment (e.g. "lunch yesterday") instead of showing nothing.
   const notePrefill = typeof noteParam === "string" ? noteParam : "";
+  // Paying a request: default to the token the requester asked for (still switchable).
+  const requestedToken =
+    typeof tokenParam === "string" && tokenByAddress(tokenParam)
+      ? tokenParam
+      : DEFAULT_TOKEN.address;
   const eerc = useEerc();
   const { address, send, isAddressRegistered } = eerc;
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(prefill);
-  const [token, setToken] = useState<string>(DEFAULT_TOKEN.address);
+  const [token, setToken] = useState<string>(requestedToken);
   const bal = eerc.balanceFor(token);
   const [memo, setMemo] = useState(notePrefill);
   const [audience, setAudience] = useState<Audience>("friends");
@@ -59,10 +65,11 @@ export default function PayAmount() {
     useCallback(() => {
       setDoneTx(null);
       setAmount(prefill);
+      setToken(requestedToken);
       setMemo(notePrefill);
       setError(null);
       setBusy(false);
-    }, [prefill, notePrefill]),
+    }, [prefill, notePrefill, requestedToken]),
   );
 
   const value = Number(amount || "0");
