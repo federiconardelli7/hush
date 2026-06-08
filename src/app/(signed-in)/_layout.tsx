@@ -3,6 +3,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { Sidebar } from "@/components/Sidebar";
 import { useTheme } from "@/design-system/theme";
 import { layout } from "@/design-system/tokens";
@@ -83,6 +84,7 @@ export default function SignedInLayout() {
                 <Tabs.Screen name="scan" options={{ href: null }} />
               </Tabs>
             </View>
+            <FirstRunGuide />
           </View>
         </ProfileGate>
       </EercProvider>

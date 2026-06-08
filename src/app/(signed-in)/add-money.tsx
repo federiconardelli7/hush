@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { FundUsdcCard } from "@/components/FundUsdcCard";
@@ -36,6 +36,18 @@ export default function AddMoney() {
   const wallet = useWalletTokenBalance(token);
   const value = Number(amount || "0");
   const canAdd = value > 0 && !busy;
+
+  // Fresh each time the screen is (re)opened — it's a kept-mounted reused route, so the
+  // last amount/token would otherwise linger on the next "Add money".
+  useFocusEffect(
+    useCallback(() => {
+      setAmount("");
+      setToken(DEFAULT_TOKEN.address);
+      setShowFund(false);
+      setError(null);
+      setBusy(false);
+    }, []),
+  );
 
   // Reset the error on any token/amount change; collapse funding when the token changes.
   useEffect(() => setError(null), [token, amount]);

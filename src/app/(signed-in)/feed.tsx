@@ -16,7 +16,9 @@ import { useFeed } from "@/features/payments/useFeed";
 import { useFeedSocial } from "@/features/social/useFeedSocial";
 import { displayName } from "@/lib/identity";
 
-const SCOPES = ["Friends", "Public", "You"] as const;
+// Order from least → most private: Public (the engaged, default view) first, then
+// Friends, then You.
+const SCOPES = ["Public", "Friends", "You"] as const;
 
 // Scope-aware empty-state copy (reads naturally per filter, not a raw label).
 const EMPTY_BY_SCOPE: Record<(typeof SCOPES)[number], string> = {

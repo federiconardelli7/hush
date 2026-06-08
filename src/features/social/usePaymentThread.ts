@@ -4,7 +4,10 @@ import type { Profile } from "@/features/profile/schema";
 import { commentsRepo, type Comment } from "@/features/social/commentsRepo";
 import { likesRepo } from "@/features/social/likesRepo";
 
-export type ThreadComment = Comment & { author: Profile | null };
+export type ThreadComment = Comment & {
+  author: Profile | null;
+  mentionUsernames: string[]; // @usernames in the body that resolved to a real user
+};
 
 export type ThreadData = {
   reactionCount: number;
@@ -23,9 +26,10 @@ export function usePaymentThread(txHash: string, me: string | undefined) {
         likesRepo.forPayments([txHash]),
         commentsRepo.listFor(txHash),
       ]);
-      const profiles = await profilesRepo.listByAddresses(
-        comments.map((c) => c.author_address),
-      );
+      const profiles = await profilesRepo.listByAddresses([
+        ...comments.map((c) => c.author_address),
+        ...comments.flatMap((c) => c.mentions),
+      ]);
       const mine = me ? likes.find((l) => l.liker_address === me) : undefined;
       return {
         reactionCount: likes.length,
@@ -33,6 +37,11 @@ export function usePaymentThread(txHash: string, me: string | undefined) {
         comments: comments.map((c) => ({
           ...c,
           author: profiles[c.author_address] ?? null,
+          // Only the @mentions that actually resolved to a real user (so a mistyped
+          // handle isn't highlighted as if it linked).
+          mentionUsernames: c.mentions
+            .map((addr) => profiles[addr]?.username)
+            .filter((u): u is string => Boolean(u)),
         })),
       };
     },

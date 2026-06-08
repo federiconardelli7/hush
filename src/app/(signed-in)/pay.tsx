@@ -1,6 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -39,6 +39,16 @@ export default function Pay() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Fresh each time the screen is (re)opened (kept-mounted tab) — otherwise the last
+  // search + results linger when you come back to pay/request a different person.
+  useFocusEffect(
+    useCallback(() => {
+      setQuery("");
+      setResults([]);
+      setSearching(false);
+    }, []),
+  );
 
   useEffect(() => {
     const q = query.trim();

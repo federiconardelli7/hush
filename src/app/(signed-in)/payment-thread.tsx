@@ -61,7 +61,11 @@ function CommentRow({
             {timeAgo(c.created_at)}
           </Text>
         </View>
-        <MentionText style={[styles.commentText, { color: colors.ink }]} body={c.body} />
+        <MentionText
+          style={[styles.commentText, { color: colors.ink }]}
+          body={c.body}
+          resolved={new Set(c.mentionUsernames)}
+        />
       </View>
       {mine ? (
         <Pressable onPress={() => onDelete(c.id)} hitSlop={8} style={styles.del}>
