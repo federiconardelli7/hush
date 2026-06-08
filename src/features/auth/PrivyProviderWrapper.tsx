@@ -2,7 +2,7 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import type { ReactNode } from "react";
 import { avalancheFuji } from "viem/chains";
 
-// Outermost provider: gives the whole app a Privy embedded wallet via email OTP.
+// Outermost provider: gives the whole app a Privy embedded wallet via email OTP or Google.
 // EXPO_PUBLIC_* vars are inlined at build time; fail loud if the app id is absent
 // so a misconfigured build breaks immediately rather than at first login.
 const appId = process.env.EXPO_PUBLIC_PRIVY_APP_ID;
@@ -18,7 +18,7 @@ export function PrivyProviderWrapper({ children }: { children: ReactNode }) {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        loginMethods: ["email"],
+        loginMethods: ["email", "google"],
         // Auto-create the EOA on first login; no seed phrase is shown to the user.
         embeddedWallets: {
           ethereum: { createOnLogin: "users-without-wallets" },
