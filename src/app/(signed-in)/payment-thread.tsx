@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
@@ -73,10 +73,10 @@ function CommentRow({
 }
 
 // The public social thread for one payment: header (who paid whom — never the amount),
-// reactions (pick-one emoji), and the comment list + composer (with @mentions). Reached
-// from any feed row's comment pill, and for non-party rows by tapping the row. Parties get
-// a "View receipt" link to the amount/proof. All reads/writes are RLS-gated by payment
-// visibility, so a non-mutual user can't open or post here.
+// reactions (pick-one emoji), and the comment list + composer (with @mention typeahead).
+// Reached from any feed row's comment pill, and for non-party rows by tapping the row.
+// Parties get a "View receipt" link to the amount/proof. All reads/writes are RLS-gated by
+// payment visibility, so a non-mutual user can't open or post here.
 export default function PaymentThread() {
   const { colors } = useTheme();
   const { address } = useEerc();
@@ -101,6 +101,22 @@ export default function PaymentThread() {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // @mention typeahead: the partial username being typed at the end of the input (after
+  // start-or-whitespace), and a prefix search for it (reusing the Pay picker's search).
+  const activeMention = /(?:^|\s)@([a-zA-Z0-9_]{1,30})$/.exec(body);
+  const mentionQuery = activeMention ? activeMention[1] : null;
+  const suggestions = useQuery({
+    queryKey: ["mention-search", mentionQuery?.toLowerCase()],
+    enabled: Boolean(mentionQuery),
+    staleTime: 30_000,
+    queryFn: () => profilesRepo.searchByUsername(mentionQuery!),
+  });
+  const matches = (suggestions.data ?? []).filter((pf) => pf.address !== me).slice(0, 6);
+
+  const applyMention = (username: string) => {
+    setBody((b) => b.replace(/@[a-zA-Z0-9_]{0,30}$/, `@${username} `));
+  };
 
   const invalidate = () =>
     Promise.all([
@@ -241,6 +257,27 @@ export default function PaymentThread() {
         {error ? (
           <Text style={[styles.composerError, { color: colors.avRed }]}>{error}</Text>
         ) : null}
+        {mentionQuery && matches.length > 0 ? (
+          <View style={[styles.suggest, { backgroundColor: colors.card, borderColor: colors.line }]}>
+            {matches.map((pf) => (
+              <Pressable
+                key={pf.address}
+                onPress={() => applyMention(pf.username)}
+                style={styles.suggestRow}
+              >
+                <Avatar name={pf.display_name} size={28} tint={pf.avatar_tint ?? undefined} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.suggestName, { color: colors.ink }]} numberOfLines={1}>
+                    {pf.display_name}
+                  </Text>
+                  <Text style={[styles.suggestHandle, { color: colors.sub }]} numberOfLines={1}>
+                    @{pf.username}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <View
           style={[styles.composer, { borderTopColor: colors.line, backgroundColor: colors.bg }]}
         >
@@ -316,6 +353,15 @@ const styles = StyleSheet.create({
   commentText: { fontFamily: fonts.ui, fontSize: 14, marginTop: 2, lineHeight: 19 },
   del: { paddingTop: 2 },
   composerError: { fontFamily: fonts.ui, fontSize: 12.5, marginBottom: spacing.sm },
+  suggest: {
+    borderRadius: radius.card,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: spacing.sm,
+  },
+  suggestRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10 },
+  suggestName: { fontFamily: fonts.ui, fontSize: 14, fontWeight: "600" },
+  suggestHandle: { fontFamily: fonts.mono, fontSize: 12, marginTop: 1 },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
