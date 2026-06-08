@@ -3,7 +3,9 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { NotificationRow } from "@/components/NotificationRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/design-system/primitives/Button";
+import { EmptyState } from "@/design-system/primitives/EmptyState";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
+import { SkeletonList } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -83,11 +85,15 @@ export default function Notifications() {
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {notifications.isLoading
-              ? "Loading…"
-              : "Nothing yet. Payments and requests will show up here."}
-          </Text>
+          notifications.isLoading ? (
+            <SkeletonList />
+          ) : (
+            <EmptyState
+              icon="bell"
+              title="Nothing yet"
+              subtitle="Payments you receive and requests will show up here."
+            />
+          )
         }
       />
     </ScreenContainer>
@@ -105,11 +111,4 @@ const styles = StyleSheet.create({
   },
   unlockText: { fontFamily: fonts.ui, fontSize: 13, lineHeight: 19 },
   list: { paddingTop: spacing.sm, paddingBottom: spacing.xl },
-  empty: {
-    fontFamily: fonts.ui,
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: spacing.xl,
-    lineHeight: 21,
-  },
 });

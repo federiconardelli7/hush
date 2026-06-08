@@ -6,7 +6,9 @@ import { ActivityRow } from "@/components/ActivityRow";
 import { BalanceCard } from "@/components/BalanceCard";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { Button } from "@/design-system/primitives/Button";
+import { EmptyState } from "@/design-system/primitives/EmptyState";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
+import { SkeletonList } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { onDarkCard, radius, shadow, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -146,7 +148,11 @@ export default function Home() {
           </View>
           <View style={styles.tiles}>
             {actions.map((t) => (
-              <Pressable key={t.key} onPress={t.onPress} style={styles.tileWrap}>
+              <Pressable
+                key={t.key}
+                onPress={t.onPress}
+                style={({ pressed }) => [styles.tileWrap, pressed && { opacity: 0.6 }]}
+              >
                 <View
                   style={[
                     styles.tile,
@@ -169,13 +175,17 @@ export default function Home() {
             <Text style={[styles.seeAll, { color: colors.actBlue }]}>See all</Text>
           </Pressable>
         </View>
-        <View style={[styles.activityCard, { backgroundColor: colors.card }]}>
-          {recent.length === 0 ? (
-            <Text style={[styles.empty, { color: colors.sub }]}>
-              {activity.isLoading ? "Loading…" : "No activity yet."}
-            </Text>
-          ) : (
-            recent.map((p, i) => (
+        {activity.isLoading && recent.length === 0 ? (
+          <SkeletonList rows={3} />
+        ) : recent.length === 0 ? (
+          <EmptyState
+            icon="activity"
+            title="No activity yet"
+            subtitle="Your payments and top-ups will show up here."
+          />
+        ) : (
+          <View style={[styles.activityCard, { backgroundColor: colors.card }]}>
+            {recent.map((p, i) => (
               <Pressable
                 key={p.tx_hash}
                 onPress={() => openReceipt(p)}
@@ -183,9 +193,9 @@ export default function Home() {
               >
                 <ActivityRow item={p} />
               </Pressable>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        )}
       </DesktopScreen>
     );
   }
@@ -245,7 +255,11 @@ export default function Home() {
           <>
             <View style={styles.actionsRow}>
               {actions.map((a) => (
-                <Pressable key={a.key} onPress={a.onPress} style={styles.actionItem}>
+                <Pressable
+                  key={a.key}
+                  onPress={a.onPress}
+                  style={({ pressed }) => [styles.actionItem, pressed && { opacity: 0.6 }]}
+                >
                   <View
                     style={[
                       styles.actionCircle,
@@ -261,29 +275,37 @@ export default function Home() {
               ))}
             </View>
 
-            {recent.length > 0 ? (
-              <>
-                <View style={styles.activityHeader}>
-                  <Text style={[styles.activityTitle, { color: colors.ink }]}>
-                    Recent activity
-                  </Text>
-                  <Pressable onPress={() => router.push("/activity")} style={styles.seeAllWrap}>
-                    <Text style={[styles.seeAll, { color: colors.actBlue }]}>See all</Text>
+            <View style={styles.activityHeader}>
+              <Text style={[styles.activityTitle, { color: colors.ink }]}>
+                Recent activity
+              </Text>
+              {recent.length > 0 ? (
+                <Pressable onPress={() => router.push("/activity")} style={styles.seeAllWrap}>
+                  <Text style={[styles.seeAll, { color: colors.actBlue }]}>See all</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {activity.isLoading && recent.length === 0 ? (
+              <SkeletonList rows={3} />
+            ) : recent.length === 0 ? (
+              <EmptyState
+                icon="activity"
+                title="No activity yet"
+                subtitle="Your payments and top-ups will show up here."
+              />
+            ) : (
+              <View style={[styles.activityCard, { backgroundColor: colors.card }]}>
+                {recent.map((p, i) => (
+                  <Pressable
+                    key={p.tx_hash}
+                    onPress={() => openReceipt(p)}
+                    style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}
+                  >
+                    <ActivityRow item={p} />
                   </Pressable>
-                </View>
-                <View style={[styles.activityCard, { backgroundColor: colors.card }]}>
-                  {recent.map((p, i) => (
-                    <Pressable
-                      key={p.tx_hash}
-                      onPress={() => openReceipt(p)}
-                      style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}
-                    >
-                      <ActivityRow item={p} />
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            ) : null}
+                ))}
+              </View>
+            )}
           </>
         )}
 
@@ -406,10 +428,4 @@ const styles = StyleSheet.create({
   seeAllWrap: { marginLeft: "auto" },
   seeAll: { fontFamily: fonts.ui, fontSize: 13.5, fontWeight: "600" },
   activityCard: { borderRadius: radius.card, paddingHorizontal: 16 },
-  empty: {
-    fontFamily: fonts.ui,
-    fontSize: 14,
-    textAlign: "center",
-    paddingVertical: spacing.xl,
-  },
 });

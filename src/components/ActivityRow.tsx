@@ -2,6 +2,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/design-system/primitives/Avatar";
+import { Skeleton } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -122,7 +123,11 @@ export function ActivityRow({
             <Feather name="lock" size={14.5} color={colors.sub} />
           ) : (
             <>
-              <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+              {amount.isPending ? (
+                <Skeleton width={48} height={14} />
+              ) : (
+                <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
+              )}
               {hasAmount && tokenSym ? (
                 <Text style={[styles.tokenTag, { color: colors.sub }]}>{tokenSym}</Text>
               ) : null}
@@ -159,6 +164,8 @@ export function ActivityRow({
       <View style={styles.right}>
         {locked ? (
           <Feather name="lock" size={14.5} color={colors.sub} />
+        ) : amount.isPending ? (
+          <Skeleton width={48} height={14} />
         ) : (
           <Text
             style={[

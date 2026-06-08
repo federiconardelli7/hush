@@ -3,7 +3,9 @@ import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { FeedRow } from "@/components/FeedRow";
+import { EmptyState } from "@/design-system/primitives/EmptyState";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
+import { SkeletonList } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { useIsWide } from "@/design-system/useResponsive";
@@ -95,9 +97,11 @@ export default function Feed() {
       <DesktopScreen title="Feed" maxWidth={600}>
         {segment}
         {items.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {feed.isLoading ? "Loading…" : EMPTY_BY_SCOPE[SCOPES[scope]]}
-          </Text>
+          feed.isLoading ? (
+            <SkeletonList />
+          ) : (
+            <EmptyState icon="globe" title={EMPTY_BY_SCOPE[SCOPES[scope]]} />
+          )
         ) : (
           items.map((item) => <View key={item.tx_hash}>{renderRow(item)}</View>)
         )}
@@ -166,9 +170,11 @@ export default function Feed() {
           />
         }
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {feed.isLoading ? "Loading…" : EMPTY_BY_SCOPE[SCOPES[scope]]}
-          </Text>
+          feed.isLoading ? (
+            <SkeletonList />
+          ) : (
+            <EmptyState icon="globe" title={EMPTY_BY_SCOPE[SCOPES[scope]]} />
+          )
         }
       />
     </ScreenContainer>
@@ -180,5 +186,4 @@ const styles = StyleSheet.create({
   seg: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: radius.pill },
   segText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
   list: { paddingBottom: spacing.xl },
-  empty: { fontFamily: fonts.ui, fontSize: 14, textAlign: "center", marginTop: spacing.xl },
 });

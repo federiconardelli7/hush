@@ -7,7 +7,9 @@ import { DesktopScreen } from "@/components/DesktopScreen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
+import { EmptyState } from "@/design-system/primitives/EmptyState";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
+import { SkeletonList } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
@@ -113,15 +115,15 @@ export default function Contacts() {
               </Pressable>
             ))}
             {!pasteAddress && results.length === 0 ? (
-              <Text style={[styles.empty, { color: colors.sub }]}>No one found.</Text>
+              <EmptyState icon="search" title="No one found" subtitle="Try a different name, or paste an address." />
             ) : null}
           </View>
         ) : list.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {contacts.isLoading
-              ? "Loading…"
-              : "No contacts yet. Add someone to pay them in one tap."}
-          </Text>
+          contacts.isLoading ? (
+            <SkeletonList />
+          ) : (
+            <EmptyState icon="users" title="No contacts yet" subtitle="Add someone to pay them in one tap." />
+          )
         ) : (
           <View style={styles.grid}>
             {list.map((item) => (
@@ -166,11 +168,11 @@ export default function Contacts() {
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.sub }]}>
-            {contacts.isLoading
-              ? "Loading…"
-              : "No contacts yet. Add someone to pay them in one tap."}
-          </Text>
+          contacts.isLoading ? (
+            <SkeletonList />
+          ) : (
+            <EmptyState icon="users" title="No contacts yet" subtitle="Add someone to pay them in one tap." />
+          )
         }
       />
     </ScreenContainer>
@@ -180,13 +182,6 @@ export default function Contacts() {
 const styles = StyleSheet.create({
   add: { marginTop: spacing.sm },
   list: { paddingTop: spacing.md, gap: spacing.sm },
-  empty: {
-    fontFamily: fonts.ui,
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: spacing.xl,
-    lineHeight: 21,
-  },
   // Desktop (≥900px) — search-to-add, then the contacts grid below.
   search: {
     fontFamily: fonts.ui,

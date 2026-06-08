@@ -16,7 +16,9 @@ import { CalendarField } from "@/components/CalendarField";
 import { DesktopScreen } from "@/components/DesktopScreen";
 import { RequestRow } from "@/components/RequestRow";
 import { Button } from "@/design-system/primitives/Button";
+import { EmptyState } from "@/design-system/primitives/EmptyState";
 import { ScreenContainer } from "@/design-system/primitives/ScreenContainer";
+import { SkeletonList } from "@/design-system/primitives/Skeleton";
 import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { useIsWide } from "@/design-system/useResponsive";
@@ -119,10 +121,6 @@ export default function Activity() {
     setToStr("");
     setCustom(null);
   };
-
-  const noPaymentsCopy = search.trim()
-    ? "No payments match your search."
-    : "No payments in this range.";
 
   const q = search.trim().toLowerCase();
   const matchesSearch = (p: ActivityEntry): boolean => {
@@ -308,16 +306,20 @@ export default function Activity() {
     // centered scrolling column, so the body must not add its own title/bell or a
     // FlatList (that would nest scroll views). Payments render as a flat bordered
     // "list table" of reused ActivityRow rows — ActivityRow owns per-row decryption.
-    const empty = (
-      <Text style={[styles.empty, { color: colors.sub }]}>
-        {isRequests
-          ? requests.isLoading
-            ? "Loading…"
-            : "No requests in this range."
-          : activity.isLoading
-            ? "Loading…"
-            : noPaymentsCopy}
-      </Text>
+    const empty = isRequests ? (
+      requests.isLoading ? (
+        <SkeletonList />
+      ) : (
+        <EmptyState icon="inbox" title="No requests here" subtitle="Money you request or owe will show up here." />
+      )
+    ) : activity.isLoading ? (
+      <SkeletonList />
+    ) : (
+      <EmptyState
+        icon="credit-card"
+        title={search.trim() ? "No matches" : "No activity here"}
+        subtitle={search.trim() ? "Try a different search." : "Your payments and top-ups will show up here."}
+      />
     );
     const desktopBody = (
       <>
@@ -417,9 +419,11 @@ export default function Activity() {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.sub }]}>
-              {requests.isLoading ? "Loading…" : "No requests in this range."}
-            </Text>
+            requests.isLoading ? (
+              <SkeletonList />
+            ) : (
+              <EmptyState icon="inbox" title="No requests here" subtitle="Money you request or owe will show up here." />
+            )
           }
         />
       ) : (
@@ -470,9 +474,15 @@ export default function Activity() {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.sub }]}>
-              {activity.isLoading ? "Loading…" : noPaymentsCopy}
-            </Text>
+            activity.isLoading ? (
+              <SkeletonList />
+            ) : (
+              <EmptyState
+                icon="credit-card"
+                title={search.trim() ? "No matches" : "No activity here"}
+                subtitle={search.trim() ? "Try a different search." : "Your payments and top-ups will show up here."}
+              />
+            )
           }
         />
       )}
@@ -568,10 +578,4 @@ const styles = StyleSheet.create({
   tableRow: { paddingHorizontal: 22 },
   deskList: { gap: spacing.sm },
   list: { paddingBottom: spacing.xl },
-  empty: {
-    fontFamily: fonts.ui,
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: spacing.xl,
-  },
 });
