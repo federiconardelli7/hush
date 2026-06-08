@@ -69,6 +69,12 @@ export default function NotificationSettings() {
       label: "Comments",
       sub: "When someone comments on your payment",
     },
+    {
+      key: "mentions",
+      icon: "at-sign",
+      label: "Mentions",
+      sub: "When someone @mentions you in a comment",
+    },
   ];
 
   return (
@@ -89,7 +95,8 @@ export default function NotificationSettings() {
         ))}
       </View>
       <Text style={[styles.foot, { color: colors.sub }]}>
-        Off by default. Money you receive and payment requests always notify you.
+        Likes and comments are off by default; mentions are on. Money you receive and
+        payment requests always notify you.
       </Text>
     </ScreenContainer>
   );

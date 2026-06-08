@@ -77,6 +77,26 @@ export const profilesRepo = {
     return map;
   },
 
+  // Resolve many @usernames to profiles at once (mention resolution). Username is unique.
+  async listByUsernames(usernames: string[]): Promise<Record<string, Profile>> {
+    const lower = [...new Set(usernames.map((u) => u.toLowerCase()))];
+    if (lower.length === 0) {
+      return {};
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(COLUMNS)
+      .in("username", lower);
+    if (error) {
+      throw new Error(error.message);
+    }
+    const map: Record<string, Profile> = {};
+    for (const profile of (data ?? []) as Profile[]) {
+      map[profile.username] = profile;
+    }
+    return map;
+  },
+
   async upsert(input: ProfileInput): Promise<Profile> {
     const parsed = profileInputSchema.parse(input);
     const row = {

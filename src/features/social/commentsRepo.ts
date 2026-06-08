@@ -1,17 +1,19 @@
 import { z } from "zod";
 import { supabase } from "@/features/supabase/client";
 
-// A comment on a payment. No amount — same privacy invariant. RLS: readable only
-// where the payment is visible; insert only as yourself; delete only your own.
+// A comment on a payment. `mentions` holds the resolved (lowercased) addresses the body
+// @mentions. No amount — same privacy invariant. RLS: readable only where the payment is
+// visible; insert only as yourself; delete only your own.
 export type Comment = {
   id: string;
   payment_tx_hash: string;
   author_address: string;
   body: string;
+  mentions: string[];
   created_at: string;
 };
 
-const COLUMNS = "id, payment_tx_hash, author_address, body, created_at";
+const COLUMNS = "id, payment_tx_hash, author_address, body, mentions, created_at";
 
 // Mirrors the DB CHECK (char_length 1..500).
 const bodySchema = z.string().trim().min(1, "Say something first.").max(500);
@@ -59,7 +61,27 @@ export const commentsRepo = {
     return (data ?? []) as Comment[];
   },
 
-  async add(txHash: string, author: string, body: string): Promise<Comment> {
+  // Comments that mention an address (newest-first) — for @mention notifications. RLS
+  // (can_see_payment) limits this to comments on payments the caller can see.
+  async mentioning(address: string): Promise<Comment[]> {
+    const { data, error } = await supabase
+      .from("comments")
+      .select(COLUMNS)
+      .contains("mentions", [address.toLowerCase()])
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Comment[];
+  },
+
+  async add(
+    txHash: string,
+    author: string,
+    body: string,
+    mentions: string[] = [],
+  ): Promise<Comment> {
     const clean = bodySchema.parse(body);
     const { data, error } = await supabase
       .from("comments")
@@ -67,6 +89,11 @@ export const commentsRepo = {
         payment_tx_hash: txHash,
         author_address: author.toLowerCase(),
         body: clean,
+        // Defensive: valid addresses only, capped (the composer already resolves these).
+        mentions: mentions
+          .map((a) => a.toLowerCase())
+          .filter((a) => /^0x[0-9a-f]{40}$/.test(a))
+          .slice(0, 20),
       })
       .select(COLUMNS)
       .single();

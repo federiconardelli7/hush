@@ -5,56 +5,58 @@ import { type GestureResponderEvent, Pressable, StyleSheet, Text } from "react-n
 import { useTheme } from "@/design-system/theme";
 import { fonts } from "@/design-system/typography";
 import { likesRepo } from "@/features/social/likesRepo";
+import { DEFAULT_REACTION } from "@/features/social/reactions";
 
-// Heart + count. The codebase has no useMutation, so the tap toggles optimistic local
-// state for instant feedback, writes through likesRepo, then invalidates the feed-social
-// + thread queries to reconcile (reverts the optimistic state on failure). With no `me`
-// (not signed in / no wallet yet) it's a read-only count. stopPropagation keeps the tap
-// from also firing an enclosing row Pressable (the feed card → receipt/thread).
+// Reaction button (feed row): shows my reaction emoji, or an outline heart if I haven't
+// reacted, plus the total count. Tap toggles my reaction — adds ❤️ if none, removes it if I
+// have one. (Picking a different emoji happens in the thread's ReactionPicker.) Optimistic
+// local state; reconciled by invalidating feed-social + thread; stopPropagation so the tap
+// doesn't also fire an enclosing row Pressable.
 export function LikeButton({
   txHash,
-  liked,
+  myEmoji,
   count,
   me,
   size = 16,
 }: {
   txHash: string;
-  liked: boolean;
+  myEmoji: string | null;
   count: number;
   me: string | undefined;
   size?: number;
 }) {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
-  const [optimistic, setOptimistic] = useState<{ liked: boolean; count: number } | null>(
+  const [optimistic, setOptimistic] = useState<{ emoji: string | null; count: number } | null>(
     null,
   );
   const [busy, setBusy] = useState(false);
 
-  const shownLiked = optimistic?.liked ?? liked;
-  const shownCount = optimistic?.count ?? count;
+  const shownEmoji = optimistic ? optimistic.emoji : myEmoji;
+  const shownCount = optimistic ? optimistic.count : count;
+  const reacted = shownEmoji != null;
 
   const toggle = async () => {
     if (!me || busy) return;
-    const next = !shownLiked;
-    setOptimistic({ liked: next, count: Math.max(0, shownCount + (next ? 1 : -1)) });
+    const removing = reacted;
+    setOptimistic({
+      emoji: removing ? null : DEFAULT_REACTION,
+      count: Math.max(0, shownCount + (removing ? -1 : 1)),
+    });
     setBusy(true);
     try {
-      if (next) {
-        await likesRepo.add(txHash, me);
-      } else {
+      if (removing) {
         await likesRepo.remove(txHash, me);
+      } else {
+        await likesRepo.add(txHash, me, DEFAULT_REACTION);
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["feed-social"] }),
         queryClient.invalidateQueries({ queryKey: ["thread", txHash] }),
       ]);
     } catch {
-      // swallow — the finally clears the optimistic override either way
+      // finally clears the optimistic override either way
     } finally {
-      // Drop the optimistic override so the reconciled server props take over: on
-      // success they reflect the new state (invalidateQueries awaited the refetch); on
-      // failure the props are unchanged, so this reverts the tap.
       setOptimistic(null);
       setBusy(false);
     }
@@ -67,9 +69,13 @@ export function LikeButton({
 
   return (
     <Pressable onPress={onPress} disabled={!me} style={styles.btn} hitSlop={8}>
-      <Feather name="heart" size={size} color={shownLiked ? colors.avRed : colors.sub} />
+      {reacted ? (
+        <Text style={{ fontSize: size }}>{shownEmoji}</Text>
+      ) : (
+        <Feather name="heart" size={size} color={colors.sub} />
+      )}
       {shownCount > 0 ? (
-        <Text style={[styles.count, { color: shownLiked ? colors.avRed : colors.sub }]}>
+        <Text style={[styles.count, { color: reacted ? colors.ink : colors.sub }]}>
           {shownCount}
         </Text>
       ) : null}

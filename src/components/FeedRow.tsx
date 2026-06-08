@@ -67,8 +67,8 @@ export function FeedRow({
         <View style={[styles.actions, { borderTopColor: colors.line }]}>
           <LikeButton
             txHash={item.tx_hash}
-            liked={social.likedByMe}
-            count={social.likeCount}
+            myEmoji={social.myEmoji}
+            count={social.reactionCount}
             me={me}
           />
           <Pressable onPress={openThread} style={styles.commentBtn} hitSlop={8}>

@@ -24,6 +24,7 @@ const META: Record<string, { icon: FeatherName; color: ColorKey; verb: string }>
   declined: { icon: "slash", color: "avRed", verb: " declined your request" },
   liked: { icon: "heart", color: "avRed", verb: " liked your payment" },
   commented: { icon: "message-circle", color: "actBlue", verb: " commented on your payment" },
+  mentioned: { icon: "at-sign", color: "actBlue", verb: " mentioned you" },
 };
 
 // One inbox row. Received → tap to its receipt. Incoming request → decrypted amount + a
@@ -108,7 +109,8 @@ export function NotificationRow({
         ? `reminded ${relativeShort(item.lastRemindedAt)}`
         : `asked ${relativeShort(item.created_at)}`
     }`;
-  else if (item.kind === "commented" && item.commentBody) sub = item.commentBody;
+  else if ((item.kind === "commented" || item.kind === "mentioned") && item.commentBody)
+    sub = item.commentBody;
   else if (item.note) sub = item.note;
 
   let right: ReactNode = (
@@ -185,7 +187,7 @@ export function NotificationRow({
       </Pressable>
     );
   }
-  if (item.kind === "liked" || item.kind === "commented") {
+  if (item.kind === "liked" || item.kind === "commented" || item.kind === "mentioned") {
     return (
       <Pressable onPress={openThread} style={rowStyle}>
         {body}

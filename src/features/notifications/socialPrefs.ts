@@ -4,9 +4,9 @@ import { useSyncExternalStore } from "react";
 // in-memory on native), reactive via useSyncExternalStore — mirrors seen.ts. Both default
 // OFF: by design, likes/comments on your payments don't notify you until you opt in
 // (Settings → Notifications). Money received + requests always notify (separate kinds).
-export type SocialPrefs = { likes: boolean; comments: boolean };
+export type SocialPrefs = { likes: boolean; comments: boolean; mentions: boolean };
 
-const DEFAULT: SocialPrefs = { likes: false, comments: false };
+const DEFAULT: SocialPrefs = { likes: false, comments: false, mentions: true };
 const storeKey = (address: string) => `hush:social-notif-prefs:v1:${address.toLowerCase()}`;
 const mem = new Map<string, SocialPrefs>();
 const listeners = new Set<() => void>();

@@ -12,7 +12,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { LikeButton } from "@/components/LikeButton";
+import { MentionText } from "@/components/MentionText";
+import { ReactionPicker } from "@/components/ReactionPicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Avatar } from "@/design-system/primitives/Avatar";
 import { Button } from "@/design-system/primitives/Button";
@@ -22,8 +23,10 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
+import { profilesRepo } from "@/features/profile/profilesRepo";
 import { commentsRepo } from "@/features/social/commentsRepo";
 import { usePaymentThread, type ThreadComment } from "@/features/social/usePaymentThread";
+import { parseMentionUsernames } from "@/lib/mentions";
 import { displayName } from "@/lib/identity";
 
 function timeAgo(iso: string): string {
@@ -58,7 +61,7 @@ function CommentRow({
             {timeAgo(c.created_at)}
           </Text>
         </View>
-        <Text style={[styles.commentText, { color: colors.ink }]}>{c.body}</Text>
+        <MentionText style={[styles.commentText, { color: colors.ink }]} body={c.body} />
       </View>
       {mine ? (
         <Pressable onPress={() => onDelete(c.id)} hitSlop={8} style={styles.del}>
@@ -70,10 +73,10 @@ function CommentRow({
 }
 
 // The public social thread for one payment: header (who paid whom — never the amount),
-// likes, and the comment list + composer. Reached from any feed row's comment pill, and
-// for non-party rows by tapping the row. Parties get a "View receipt" link to the
-// amount/proof (which stays in the party-only receipt). All reads/writes are RLS-gated by
-// payment visibility, so a non-mutual user can't open or post here.
+// reactions (pick-one emoji), and the comment list + composer (with @mentions). Reached
+// from any feed row's comment pill, and for non-party rows by tapping the row. Parties get
+// a "View receipt" link to the amount/proof. All reads/writes are RLS-gated by payment
+// visibility, so a non-mutual user can't open or post here.
 export default function PaymentThread() {
   const { colors } = useTheme();
   const { address } = useEerc();
@@ -111,7 +114,15 @@ export default function PaymentThread() {
     setError(null);
     setBusy(true);
     try {
-      await commentsRepo.add(txHash, me, text);
+      // Resolve @usernames → addresses so the mentioned users can be notified (only if
+      // they can see this payment — enforced by RLS on the mention lookup).
+      const usernames = parseMentionUsernames(text);
+      const mentioned = usernames.length
+        ? Object.values(await profilesRepo.listByUsernames(usernames))
+            .map((profile) => profile.address)
+            .filter((a) => a !== me)
+        : [];
+      await commentsRepo.add(txHash, me, text, mentioned);
       setBody("");
       await invalidate();
     } catch {
@@ -148,7 +159,7 @@ export default function PaymentThread() {
   };
 
   const data = thread.data;
-  const likeCount = data?.likeCount ?? 0;
+  const reactionCount = data?.reactionCount ?? 0;
   const dateText = p.createdAt
     ? new Date(p.createdAt).toLocaleString(undefined, {
         dateStyle: "medium",
@@ -179,18 +190,12 @@ export default function PaymentThread() {
         {p.caption ? (
           <Text style={[styles.caption, { color: colors.ink }]}>{p.caption}</Text>
         ) : null}
-        <View style={[styles.likeRow, { borderTopColor: colors.line }]}>
-          <LikeButton
-            txHash={txHash}
-            liked={data?.likedByMe ?? false}
-            count={likeCount}
-            me={me}
-            size={18}
-          />
-          <Text style={[styles.likeText, { color: colors.sub }]}>
-            {likeCount === 0
-              ? "Be the first to like"
-              : `${likeCount} ${likeCount === 1 ? "like" : "likes"}`}
+        <View style={[styles.reactRow, { borderTopColor: colors.line }]}>
+          <ReactionPicker txHash={txHash} myEmoji={data?.myEmoji ?? null} me={me} />
+          <Text style={[styles.reactText, { color: colors.sub }]}>
+            {reactionCount === 0
+              ? "Be the first to react"
+              : `${reactionCount} ${reactionCount === 1 ? "reaction" : "reactions"}`}
           </Text>
         </View>
       </View>
@@ -242,7 +247,7 @@ export default function PaymentThread() {
           <TextInput
             value={body}
             onChangeText={setBody}
-            placeholder="Add a comment…"
+            placeholder="Add a comment…  use @name to mention"
             placeholderTextColor={colors.sub}
             maxLength={500}
             multiline
@@ -287,15 +292,8 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: fonts.ui, fontSize: 11, fontWeight: "600" },
   caption: { fontFamily: fonts.ui, fontSize: 14, marginTop: 11 },
-  likeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 13,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  likeText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
+  reactRow: { marginTop: 13, paddingTop: 12, borderTopWidth: 1, gap: 10 },
+  reactText: { fontFamily: fonts.ui, fontSize: 13, fontWeight: "600" },
   receiptBtn: { marginTop: spacing.md },
   commentsLabel: {
     fontFamily: fonts.ui,

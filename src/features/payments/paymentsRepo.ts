@@ -97,4 +97,18 @@ export const paymentsRepo = {
     }
     return (data ?? []) as Payment[];
   },
+
+  // Visible payments for a set of tx hashes (RLS-gated) — used to build the header for
+  // mention notifications on payments that aren't the current wallet's own.
+  async byTxHashes(txHashes: string[]): Promise<Payment[]> {
+    if (txHashes.length === 0) return [];
+    const { data, error } = await supabase
+      .from("payments")
+      .select(COLUMNS)
+      .in("tx_hash", txHashes);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data ?? []) as Payment[];
+  },
 };
