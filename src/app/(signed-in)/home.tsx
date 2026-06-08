@@ -73,32 +73,35 @@ export default function Home() {
 
   const balanceUnlocked = eerc.isRegistered && eerc.isDecryptionKeySet;
 
+  // The four primary actions — shared by the desktop balance-card tiles and the mobile
+  // quick-action row. Add is the visual primary (you fund before you can do anything).
+  const actions: {
+    key: string;
+    icon: React.ComponentProps<typeof Feather>["name"];
+    label: string;
+    primary?: boolean;
+    onPress: () => void;
+  }[] = [
+    { key: "add", icon: "plus", label: "Add", primary: true, onPress: () => router.push("/add-money") },
+    {
+      key: "send",
+      icon: "arrow-up-right",
+      label: "Send",
+      onPress: () => router.push({ pathname: "/pay", params: { mode: "pay" } }),
+    },
+    {
+      key: "request",
+      icon: "arrow-down-left",
+      label: "Request",
+      onPress: () => router.push({ pathname: "/pay", params: { mode: "request" } }),
+    },
+    { key: "cashout", icon: "dollar-sign", label: "Cash out", onPress: () => router.push("/cash-out") },
+  ];
+
   // Desktop only kicks in once registered + unlocked; the loading/register/unlock
   // gates below stay on the shared mobile return so the eERC flow is identical.
   if (isWide && balanceUnlocked) {
     const recent = (activity.data ?? []).slice(0, 5);
-    const tiles: {
-      key: string;
-      icon: React.ComponentProps<typeof Feather>["name"];
-      label: string;
-      primary?: boolean;
-      onPress: () => void;
-    }[] = [
-      { key: "add", icon: "plus", label: "Add", primary: true, onPress: () => router.push("/add-money") },
-      {
-        key: "send",
-        icon: "arrow-up-right",
-        label: "Send",
-        onPress: () => router.push({ pathname: "/pay", params: { mode: "pay" } }),
-      },
-      {
-        key: "request",
-        icon: "arrow-down-left",
-        label: "Request",
-        onPress: () => router.push({ pathname: "/pay", params: { mode: "request" } }),
-      },
-      { key: "cashout", icon: "dollar-sign", label: "Cash out", onPress: () => router.push("/cash-out") },
-    ];
 
     return (
       <DesktopScreen title="Home" maxWidth={760}>
@@ -126,7 +129,7 @@ export default function Home() {
             ))}
           </View>
           <View style={styles.tiles}>
-            {tiles.map((t) => (
+            {actions.map((t) => (
               <Pressable key={t.key} onPress={t.onPress} style={styles.tileWrap}>
                 <View
                   style={[
@@ -233,40 +236,21 @@ export default function Home() {
           />
         </View>
       ) : (
-        <>
-          <View style={styles.row}>
-            <Button
-              label="Add"
-              variant="primary"
-              style={styles.cell}
-              onPress={() => router.push("/add-money")}
-            />
-            <Button
-              label="Send"
-              variant="secondary"
-              style={styles.cell}
-              onPress={() =>
-                router.push({ pathname: "/pay", params: { mode: "pay" } })
-              }
-            />
-          </View>
-          <View style={styles.row}>
-            <Button
-              label="Request"
-              variant="secondary"
-              style={styles.cell}
-              onPress={() =>
-                router.push({ pathname: "/pay", params: { mode: "request" } })
-              }
-            />
-            <Button
-              label="Cash out"
-              variant="secondary"
-              style={styles.cell}
-              onPress={() => router.push("/cash-out")}
-            />
-          </View>
-        </>
+        <View style={styles.actionsRow}>
+          {actions.map((a) => (
+            <Pressable key={a.key} onPress={a.onPress} style={styles.actionItem}>
+              <View
+                style={[
+                  styles.actionCircle,
+                  { backgroundColor: a.primary ? colors.actBlue : colors.chip },
+                ]}
+              >
+                <Feather name={a.icon} size={22} color={a.primary ? "#fff" : colors.ink} />
+              </View>
+              <Text style={[styles.actionCaption, { color: colors.sub }]}>{a.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       )}
 
       {error ? (
@@ -296,8 +280,21 @@ const styles = StyleSheet.create({
   },
   gate: { gap: spacing.md, marginTop: spacing.lg },
   note: { fontFamily: fonts.ui, fontSize: 14, lineHeight: 21, textAlign: "center" },
-  row: { flexDirection: "row", gap: spacing.md, marginTop: spacing.md },
-  cell: { flex: 1 },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  actionItem: { alignItems: "center", gap: 8 },
+  actionCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionCaption: { fontFamily: fonts.ui, fontSize: 12.5, fontWeight: "600" },
   error: {
     fontFamily: fonts.ui,
     fontSize: 13,
