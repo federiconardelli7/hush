@@ -37,6 +37,16 @@ if (typeof document === "undefined") {
     PatchedBlob.prototype = NativeBlob.prototype;
     global.Blob = PatchedBlob;
   }
+
+  // ...ffjavascript then calls URL.createObjectURL(workerBlob) (threadman.js:48).
+  // RN ships a real createObjectURL, but it throws on this app: getBlobUrlPrefix
+  // needs the native BlobModule's BLOB_URI_SCHEME constant, which isn't wired up
+  // here. The worker URL is never used on Hermes (single-threaded proving), so
+  // no-op both methods unconditionally on native.
+  if (global.URL) {
+    global.URL.createObjectURL = () => "";
+    global.URL.revokeObjectURL = () => {};
+  }
 }
 
 // Silence one benign dev warning: Privy's styled-components UI passes an `isActive`
