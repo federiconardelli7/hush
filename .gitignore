@@ -46,3 +46,4 @@ yarn-error.*
 # local tooling
 .claude/
 .vercel
+src/features/eerc/prover/snarkjsSource.gen.ts

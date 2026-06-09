@@ -22,13 +22,16 @@ function toAbsolute(path: string): string {
   if (path.startsWith("http")) {
     return path;
   }
-  if (typeof window !== "undefined" && window.location?.origin) {
+  // Web only — gate on `document`, NOT `window`: RN aliases window = global and
+  // the dev client exposes window.location with the Metro origin (localhost:8081),
+  // which would point the ProverHost WebView (an https page) at a cleartext
+  // localhost URL → blocked as mixed content ("Failed to fetch").
+  if (typeof document !== "undefined" && window.location?.origin) {
     return new URL(path, window.location.origin).toString();
   }
-  // Native (no window): the eERC SDK falls through to `new URL(path)` (no base) and,
-  // before that, an `await import('node:fs')` branch — both fail on Hermes. Feeding it
-  // an absolute https URL sidesteps both: the SDK fetches the .wasm/.zkey over the
-  // network. Spike-stage; bundling the circuits as local assets is a later optimization.
+  // Native: absolute https URLs against the deployed web origin. The ProverHost
+  // WebView page loads with this same origin as its baseUrl, so circuit fetches
+  // are same-origin. Bundling the circuits as local assets is a later optimization.
   return `${NATIVE_ASSET_ORIGIN}${path}`;
 }
 

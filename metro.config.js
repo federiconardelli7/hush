@@ -19,10 +19,16 @@ const EERC_SDK_ESM = path.resolve(
 const OS_SHIM = path.resolve(__dirname, "src/shims/os.js");
 const EMPTY_SHIM = path.resolve(__dirname, "src/shims/empty.js");
 
+// Stock Hermes has no WebAssembly, so the real snarkjs can't prove on native.
+// Serve the WebView prover bridge instead (see src/features/eerc/prover/).
+const SNARKJS_BRIDGE = path.resolve(
+  __dirname,
+  "src/features/eerc/prover/snarkjsBridge.native.ts",
+);
+
 // Prover-chain packages whose node builds require Hermes-absent builtins — resolved
 // to their browser/ESM builds on native instead (see the resolver below).
 const PROVER_DEPS = new Set([
-  "snarkjs",
   "ffjavascript",
   "wasmbuilder",
   "circom_runtime",
@@ -72,6 +78,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
     if (moduleName === "@avalabs/eerc-sdk") {
       return { type: "sourceFile", filePath: EERC_SDK_ESM };
+    }
+    // Groth16 proving runs in the ProverHost WebView (Hermes lacks WASM); the
+    // SDK's snarkjs import gets the bridge that forwards fullProve/calldata.
+    if (moduleName === "snarkjs") {
+      return { type: "sourceFile", filePath: SNARKJS_BRIDGE };
     }
     // Prefer the browser/ESM builds of the prover chain; their node builds pull in
     // the builtins above. conditionNames omits "node" so the node build is skipped.

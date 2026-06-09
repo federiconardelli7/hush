@@ -60,7 +60,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "faucet": "node --env-file=.env --import tsx scripts/faucet.ts"
+    "faucet": "node --env-file=.env --import tsx scripts/faucet.ts",
+    "postinstall": "node scripts/gen-snarkjs-source.mjs"
   },
   "private": true
 }
