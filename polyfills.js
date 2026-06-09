@@ -11,6 +11,14 @@ if (typeof global.process === "undefined") {
   global.process = process;
 }
 
+// Native only (@privy-io/expo + viem/snarkjs): TextEncoder/atob/FileReader/nextTick
+// shims that Hermes lacks. No-ops on web (the browser already has these); gated on
+// the absence of `document` so the web bundle stays byte-for-byte unchanged.
+if (typeof document === "undefined") {
+  require("fast-text-encoding");
+  require("@ethersproject/shims");
+}
+
 // Silence one benign dev warning: Privy's styled-components UI passes an `isActive`
 // prop to a DOM element, which React flags. It's internal to Privy (we never pass
 // `isActive`), harmless, and not fixable without a Privy patch — so drop just that

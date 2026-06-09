@@ -12,12 +12,33 @@ const ALIASES = {
 };
 
 const defaultResolveRequest = config.resolver.resolveRequest;
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  const target = ALIASES[moduleName] ?? moduleName;
+const resolveWith = (context, moduleName, platform, overrides) => {
+  const ctx = overrides ? { ...context, ...overrides } : context;
   if (defaultResolveRequest) {
-    return defaultResolveRequest(context, target, platform);
+    return defaultResolveRequest(ctx, moduleName, platform);
   }
-  return context.resolveRequest(context, target, platform);
+  return ctx.resolveRequest(ctx, moduleName, platform);
+};
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Native only (@privy-io/expo + viem): a few deps ship package "exports" maps
+  // that break the Metro native bundle. Disable/redirect them for native only,
+  // leaving web resolution exactly as it was (the live web app must be unaffected).
+  if (platform !== "web") {
+    if (moduleName === "isows" || moduleName.startsWith("zustand")) {
+      return resolveWith(context, moduleName, platform, {
+        unstable_enablePackageExports: false,
+      });
+    }
+    if (moduleName === "jose") {
+      return resolveWith(context, moduleName, platform, {
+        unstable_conditionNames: ["browser"],
+      });
+    }
+  }
+
+  const target = ALIASES[moduleName] ?? moduleName;
+  return resolveWith(context, target, platform);
 };
 
 module.exports = config;
