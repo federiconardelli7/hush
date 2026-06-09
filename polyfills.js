@@ -17,6 +17,26 @@ if (typeof global.process === "undefined") {
 if (typeof document === "undefined") {
   require("fast-text-encoding");
   require("@ethersproject/shims");
+
+  // ffjavascript (snarkjs's field math) builds an *unused* Web-Worker Blob from a
+  // Uint8Array at import time; React Native's Blob rejects ArrayBuffer(View) parts and
+  // throws, crashing the app at launch. On Hermes there's no Worker, so proving runs
+  // single-threaded and that Blob is never used — so tolerate it: substitute empty
+  // strings for ArrayBuffer(View) parts instead of throwing. Hush has no native flow
+  // that builds a Blob from binary, so nothing real is affected.
+  if (typeof global.Blob === "function") {
+    const NativeBlob = global.Blob;
+    function PatchedBlob(parts, options) {
+      const safeParts = Array.isArray(parts)
+        ? parts.map((part) =>
+            part instanceof ArrayBuffer || ArrayBuffer.isView(part) ? "" : part,
+          )
+        : parts;
+      return new NativeBlob(safeParts, options);
+    }
+    PatchedBlob.prototype = NativeBlob.prototype;
+    global.Blob = PatchedBlob;
+  }
 }
 
 // Silence one benign dev warning: Privy's styled-components UI passes an `isActive`
