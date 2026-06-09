@@ -2,6 +2,7 @@
   "expo": {
     "name": "hush",
     "slug": "hush",
+    "owner": "ava-labs",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -41,6 +42,11 @@
           "cameraPermission": "Allow Hush to scan a friend's QR code to pay or add them."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1e98e056-bd7a-4a75-b85c-c28a37cd96f3"
+      }
+    }
   }
 }

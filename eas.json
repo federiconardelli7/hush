@@ -15,6 +15,14 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_PRIVY_APP_ID": "cmpyi1on0005k0dju6smub3r2",
+        "EXPO_PUBLIC_PRIVY_CLIENT_ID": "client-WY6Zc2bpKPucTFmTV4Yo2J8QtkUyTZoKikkResmzanLYH",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bbaomzemiivislppogee.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiYW9temVtaWl2aXNscHBvZ2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDc3NTYsImV4cCI6MjA5NjA4Mzc1Nn0.m1JwtM9PjSPHro1rWCHsUgIQa3NURQdO-Xjhv1bxbfI",
+        "EXPO_PUBLIC_FUJI_RPC": "https://api.avax-test.network/ext/bc/C/rpc",
+        "EXPO_PUBLIC_FUJI_CHAIN_ID": "43113"
       }
     },
     "production": {
