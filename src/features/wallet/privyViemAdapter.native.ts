@@ -97,11 +97,47 @@ export function useHushWallet(): HushWallet {
       try {
         const provider = await wallet.getProvider();
         if (cancelled) return;
+        // Privy's native provider populates missing tx fields itself, but its gas
+        // fill is a flat transfer-sized value — contract calls (approve/deposit/
+        // transfer verifiers) get rejected with "intrinsic gas too low". Estimate
+        // against the Fuji RPC and pass gas explicitly (+25% headroom) so Privy
+        // never has to guess. Web is untouched (its iframe provider estimates).
+        const withGasEstimation = {
+          request: async (args: { method: string; params?: unknown }) => {
+            // viem tries eth_sendTransaction first; Privy's provider rejects it as
+            // unsupported and viem falls back to wallet_sendTransaction — patch both.
+            if (
+              (args.method === "eth_sendTransaction" ||
+                args.method === "wallet_sendTransaction") &&
+              Array.isArray(args.params)
+            ) {
+              const [tx] = args.params as [Record<string, unknown>];
+              if (tx && typeof tx === "object" && !tx.gas) {
+                const gas = await publicClient.estimateGas({
+                  account: tx.from as `0x${string}`,
+                  to: tx.to as `0x${string}`,
+                  data: tx.data as `0x${string}` | undefined,
+                  value: typeof tx.value === "string" ? BigInt(tx.value) : undefined,
+                });
+                const padded = `0x${((gas * 125n) / 100n).toString(16)}`;
+                // Both spellings: viem uses `gas`, Privy's signer reads `gasLimit`
+                // (their serializer keeps unknown keys, so gasLimit survives the
+                // populate→sign pipeline; without it the signer falls back to a
+                // plain-transfer gas limit and the node rejects contract calls).
+                return provider.request({
+                  ...args,
+                  params: [{ ...tx, gas: padded, gasLimit: padded }],
+                } as Parameters<typeof provider.request>[0]);
+              }
+            }
+            return provider.request(args as Parameters<typeof provider.request>[0]);
+          },
+        };
         setWalletClient(
           createWalletClient({
             account: address,
             chain: avalancheFuji,
-            transport: custom(provider),
+            transport: custom(withGasEstimation),
           }),
         );
         setReadyAddress(address);
