@@ -1,4 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
+import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { QrCode } from "@/components/QrCode";
@@ -10,15 +11,14 @@ const shorten = (a: string) => `${a.slice(0, 10)}…${a.slice(-8)}`;
 
 // Funding panel for USDC: there's no in-app faucet, so the user funds by sending
 // USDC to their own wallet address — tap the address to copy it, grab test USDC
-// from Circle, then tap Add to deposit. (Web copy via navigator.clipboard, which is
-// available on localhost/https; native would use expo-clipboard later.)
+// from Circle, then tap Add to deposit. (Copy via expo-clipboard — cross-platform.)
 export function FundUsdcCard({ address }: { address: string | null }) {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
-    if (!address || typeof navigator === "undefined" || !navigator.clipboard) return;
-    void navigator.clipboard.writeText(address);
+    if (!address) return;
+    void Clipboard.setStringAsync(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };

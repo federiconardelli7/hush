@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { QrCode } from "@/components/QrCode";
@@ -20,10 +21,8 @@ export default function MyCode() {
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
-    if (!address || typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-    void navigator.clipboard.writeText(address);
+    if (!address) return;
+    void Clipboard.setStringAsync(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
