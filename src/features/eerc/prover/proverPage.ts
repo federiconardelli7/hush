@@ -1,3 +1,4 @@
+import { resolveCircuitUrls } from "@/features/eerc/circuits";
 import { SNARKJS_SRC } from "@/features/eerc/prover/snarkjsSource.gen";
 
 // The page that runs inside ProverHost's WebView: the real snarkjs browser
@@ -6,6 +7,14 @@ import { SNARKJS_SRC } from "@/features/eerc/prover/snarkjsSource.gen";
 // Page -> RN: results and the boot signal go through
 // window.ReactNativeWebView.postMessage as JSON strings.
 export function buildProverPage(): string {
+  const circuits = resolveCircuitUrls();
+  // Only the proofs the app actually generates (register at onboarding,
+  // transfer on send, withdraw on cash-out) — mint/burn circuits are unused.
+  const prefetch = [circuits.register, circuits.transfer, circuits.withdraw].flatMap((pair) => [
+    pair.wasm,
+    pair.zkey,
+  ]);
+  const prefetchJson = JSON.stringify(prefetch).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"/></head>
@@ -44,6 +53,21 @@ export function buildProverPage(): string {
     }
   };
   post({ type: "ready" });
+  // Warm the WebView's HTTP cache so a fresh install's first proof skips the
+  // multi-MB circuit download (~60s observed). Sequential, register first
+  // (onboarding proves before anything else); failures are ignored — proving
+  // re-fetches on demand. Bodies must be consumed for the cache to store them.
+  var PREFETCH = ${prefetchJson};
+  (function warm(i) {
+    if (i >= PREFETCH.length) {
+      console.log("[hush-prover] circuit prefetch complete");
+      return;
+    }
+    fetch(PREFETCH[i])
+      .then(function (r) { return r.arrayBuffer(); })
+      .catch(function () {})
+      .then(function () { warm(i + 1); });
+  })(0);
 })();
 </script>
 </body>
