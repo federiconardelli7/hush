@@ -1,5 +1,4 @@
 import Feather from "@expo/vector-icons/Feather";
-import { usePrivy } from "@privy-io/react-auth";
 import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -7,6 +6,7 @@ import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { Sidebar } from "@/components/Sidebar";
 import { useTheme } from "@/design-system/theme";
 import { layout } from "@/design-system/tokens";
+import { useAuth } from "@/features/auth/useAuth";
 import { EercProvider } from "@/features/eerc/EercProvider";
 import { ProfileGate } from "@/features/profile/ProfileGate";
 
@@ -23,7 +23,7 @@ const TAB_ICON: Record<string, keyof typeof Feather.glyphMap> = {
 // left Sidebar sits beside the content and the bottom tab bar is hidden; on narrow ones
 // the bottom tab bar shows as before. The Tabs navigator (and all routes) is unchanged.
 export default function SignedInLayout() {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useAuth();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const isWide = width >= layout.wide;

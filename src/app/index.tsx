@@ -1,12 +1,12 @@
-import { usePrivy } from "@privy-io/react-auth";
 import { Redirect } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useTheme } from "@/design-system/theme";
+import { useAuth } from "@/features/auth/useAuth";
 
 // Entry gate: wait for Privy to hydrate, then route authenticated users into
 // the app and everyone else into onboarding.
 export default function Index() {
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated } = useAuth();
   const { colors } = useTheme();
 
   if (!ready) {

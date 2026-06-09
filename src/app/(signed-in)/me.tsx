@@ -1,5 +1,4 @@
 import Feather from "@expo/vector-icons/Feather";
-import { usePrivy } from "@privy-io/react-auth";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -11,6 +10,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { useIsWide } from "@/design-system/useResponsive";
 import { fonts, typeScale } from "@/design-system/typography";
+import { useAuth } from "@/features/auth/useAuth";
 import { clearDecryptionKey } from "@/features/eerc/session";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
@@ -54,7 +54,7 @@ function Row({
 export default function Me() {
   const { colors, isDark, toggle } = useTheme();
   const isWide = useIsWide();
-  const { logout } = usePrivy();
+  const { logout } = useAuth();
   const { address, supabaseStatus, supabaseBoundWallet, supabaseError } = useEerc();
   const profile = useProfile(address ?? null);
 

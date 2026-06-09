@@ -38,7 +38,11 @@ function tokenExp(token: string | null): number | null {
     let b64 = part.replace(/-/g, "+").replace(/_/g, "/");
     const pad = b64.length % 4;
     if (pad) b64 += "=".repeat(4 - pad);
-    const payload = JSON.parse(atob(b64)) as { exp?: number };
+    // Buffer (set globally in polyfills.js) decodes base64 on both web and native;
+    // `atob` isn't available on React Native's Hermes engine.
+    const payload = JSON.parse(
+      Buffer.from(b64, "base64").toString("utf-8"),
+    ) as { exp?: number };
     return typeof payload.exp === "number" ? payload.exp : null;
   } catch {
     return null;
