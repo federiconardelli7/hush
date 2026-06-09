@@ -80,11 +80,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         unstable_conditionNames: ["browser", "import", "default"],
       });
     }
-    if (moduleName === "isows" || moduleName.startsWith("zustand")) {
-      return resolveWith(context, moduleName, platform, {
-        unstable_enablePackageExports: false,
-      });
-    }
     if (moduleName === "jose") {
       return resolveWith(context, moduleName, platform, {
         unstable_conditionNames: ["browser"],

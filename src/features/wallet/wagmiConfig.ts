@@ -8,6 +8,10 @@ import { FUJI_RPC_URL } from "@/features/eerc/config/contracts";
 // wallet client built from the Privy embedded wallet, not wagmi accounts.
 export const wagmiConfig = createConfig({
   chains: [avalancheFuji],
+  // mipd (EIP-6963 injected-wallet discovery) calls window.addEventListener at
+  // construction; React Native aliases window = global with no EventTarget, so
+  // Hermes throws. Discovery only matters in a browser — gate it off natively.
+  multiInjectedProviderDiscovery: typeof document !== "undefined",
   transports: {
     [avalancheFuji.id]: http(FUJI_RPC_URL),
   },
