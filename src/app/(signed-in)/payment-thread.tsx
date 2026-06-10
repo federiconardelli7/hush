@@ -2,6 +2,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   FlatList,
   Pressable,
@@ -10,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { KeyboardAvoidingView } from "@/components/KeyboardAvoiding";
+import { KeyboardSticky } from "@/components/KeyboardSticky";
 import { MentionText } from "@/components/MentionText";
 import { ReactionPicker } from "@/components/ReactionPicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -82,6 +83,7 @@ function CommentRow({
 // payment visibility, so a non-mutual user can't open or post here.
 export default function PaymentThread() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { address } = useEerc();
   const me = address?.toLowerCase();
   const queryClient = useQueryClient();
@@ -233,15 +235,7 @@ export default function PaymentThread() {
   return (
     <ScreenContainer>
       <ScreenHeader title="Post" />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        // "padding" on BOTH platforms. Native resolves to keyboard-controller's
-        // WindowInsets-driven implementation (RN core's keyboard events are
-        // unreliable under Android 16 edge-to-edge: zero lift on the Pixel 10,
-        // under-padding on the emulator). Web's RN version ignores behavior.
-        behavior="padding"
-      >
-        <FlatList
+      <FlatList
           style={styles.flex}
           data={data?.comments ?? []}
           keyExtractor={(c) => c.id}
@@ -261,6 +255,11 @@ export default function PaymentThread() {
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
         />
+        {/* Composer block rides the live keyboard via translation (KeyboardSticky) —
+            geometry-math keyboard avoidance proved device-dependent on Android 16
+            (D-53). The opened offset re-claims ScreenContainer's bottom padding,
+            which the keyboard covers. Web pair is a plain View (browsers handle it). */}
+        <KeyboardSticky offset={{ opened: insets.bottom + spacing.lg }}>
         {error ? (
           <Text style={[styles.composerError, { color: colors.avRed }]}>{error}</Text>
         ) : null}
@@ -313,7 +312,7 @@ export default function PaymentThread() {
             />
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardSticky>
     </ScreenContainer>
   );
 }
