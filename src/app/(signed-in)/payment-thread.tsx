@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -236,7 +235,10 @@ export default function PaymentThread() {
       <ScreenHeader title="Post" />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        // "padding" on BOTH platforms: Android runs edge-to-edge (SDK 56), so the
+        // window no longer resizes for the keyboard — without padding the composer
+        // hides behind it. Web's KeyboardAvoidingView ignores behavior entirely.
+        behavior="padding"
       >
         <FlatList
           style={styles.flex}
