@@ -7,6 +7,7 @@ import { useTheme } from "@/design-system/theme";
 import { radius, spacing } from "@/design-system/tokens";
 import { fonts } from "@/design-system/typography";
 import { useEerc } from "@/features/eerc/useEerc";
+import { notificationPrefsRepo } from "@/features/push/notificationPrefsRepo";
 import {
   setSocialPref,
   useSocialPrefs,
@@ -58,8 +59,16 @@ export default function NotificationSettings() {
   const { address } = useEerc();
   const me = address?.toLowerCase();
   const prefs = useSocialPrefs(me);
-  const onToggle = (key: keyof SocialPrefs) => (value: boolean) =>
+  const onToggle = (key: keyof SocialPrefs) => (value: boolean) => {
     setSocialPref(me, key, value);
+    // Mirror to the server so the push sender sees the same gates (best-effort;
+    // the in-app inbox keeps reading the local store).
+    if (me) {
+      void notificationPrefsRepo.upsert(me, { ...prefs, [key]: value }).catch((error) => {
+        console.error("prefs mirror failed:", error);
+      });
+    }
+  };
 
   const social: { key: keyof SocialPrefs; icon: FeatherName; label: string; sub: string }[] = [
     { key: "likes", icon: "heart", label: "Likes", sub: "When someone likes your payment" },

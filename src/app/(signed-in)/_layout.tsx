@@ -9,6 +9,7 @@ import { layout } from "@/design-system/tokens";
 import { useAuth } from "@/features/auth/useAuth";
 import { EercProvider } from "@/features/eerc/EercProvider";
 import { ProfileGate } from "@/features/profile/ProfileGate";
+import { PushRegistrar } from "@/features/push/PushRegistrar";
 
 const TAB_ICON: Record<string, keyof typeof Feather.glyphMap> = {
   home: "home",
@@ -91,6 +92,7 @@ export default function SignedInLayout() {
               </Tabs>
             </View>
             <FirstRunGuide />
+            <PushRegistrar />
           </View>
         </ProfileGate>
       </EercProvider>

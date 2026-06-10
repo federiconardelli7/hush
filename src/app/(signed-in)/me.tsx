@@ -14,6 +14,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { clearDecryptionKey } from "@/features/eerc/session";
 import { useEerc } from "@/features/eerc/useEerc";
 import { useProfile } from "@/features/profile/useProfile";
+import { unregisterPushToken } from "@/features/push/usePushRegistration";
 import { setReauthProvider, setSupabaseToken } from "@/features/supabase/client";
 
 function Row({
@@ -58,10 +59,12 @@ export default function Me() {
   const { address, supabaseStatus, supabaseBoundWallet, supabaseError } = useEerc();
   const profile = useProfile(address ?? null);
 
-  // Sign out: wipe the locally-cached decryption key first (it now persists in
-  // sessionStorage — see eerc/session.ts), drop the Supabase token + its reauth
-  // provider so nothing re-mints after logout, then end the Privy session.
-  const handleSignOut = () => {
+  // Sign out: remove this device's push token first (the delete needs the still-
+  // authed Supabase client), wipe the locally-cached decryption key (it persists
+  // in sessionStorage — see eerc/session.ts), drop the Supabase token + its
+  // reauth provider so nothing re-mints after logout, then end the Privy session.
+  const handleSignOut = async () => {
+    await unregisterPushToken();
     if (address) clearDecryptionKey(address);
     setSupabaseToken(null);
     setReauthProvider(null);
