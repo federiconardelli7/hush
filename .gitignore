@@ -47,3 +47,7 @@ yarn-error.*
 .claude/
 .vercel
 src/features/eerc/prover/snarkjsSource.gen.ts
+
+# Firebase client config — stays out of the public repo; EAS gets it as a file
+# secret (GOOGLE_SERVICES_JSON), local builds read the untracked file.
+google-services.json
