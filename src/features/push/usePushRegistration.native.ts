@@ -33,9 +33,11 @@ export function usePushRegistration(address: string | undefined): void {
     (async () => {
       try {
         if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("default", {
-            name: "Notifications",
-            importance: Notifications.AndroidImportance.DEFAULT,
+          // HIGH = heads-up banner. Channels are immutable once created, so this
+          // id must change if the importance ever does (hence not "default").
+          await Notifications.setNotificationChannelAsync("payments", {
+            name: "Payments & activity",
+            importance: Notifications.AndroidImportance.HIGH,
           });
         }
         const perm = await Notifications.requestPermissionsAsync();

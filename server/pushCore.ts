@@ -1,6 +1,21 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { Expo, type ExpoPushMessage } from "expo-server-sdk";
 import { z } from "zod";
+
+// Expo push HTTP API, called directly with fetch: expo-server-sdk@6 is
+// ESM-only and crashes Vercel's CJS function runtime (ERR_REQUIRE_ESM), and
+// the API is a single JSON POST anyway. Tickets come back per message.
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const PUSH_CHUNK = 100;
+
+type PushMessage = {
+  to: string;
+  title: string;
+  body: string;
+  data: { url: string };
+  channelId: string;
+};
+
+type PushTicket = { status: "ok" | "error"; details?: { error?: string } };
 
 // Webhook payload from Supabase database webhooks (pg_net).
 const webhookSchema = z.object({
@@ -139,25 +154,32 @@ export async function notify(rawBody: unknown): Promise<{ sent: number }> {
   if (!tokens || tokens.length === 0) return { sent: 0 };
 
   const bodyByAddress = new Map(recipients.map((rec) => [rec.address, rec.body]));
-  const expo = new Expo();
-  const messages: ExpoPushMessage[] = tokens
-    .filter((t) => Expo.isExpoPushToken(t.token))
+  const messages: PushMessage[] = tokens
+    .filter((t) => t.token.startsWith("ExponentPushToken["))
     .map((t) => ({
       to: t.token,
       title: "Hush",
       body: bodyByAddress.get(t.address) ?? "New activity",
       data: { url: "/notifications" },
+      // Android: the client-created high-importance channel (heads-up banner).
+      channelId: "payments",
     }));
 
   let sent = 0;
   const dead: string[] = [];
-  for (const chunk of expo.chunkPushNotifications(messages)) {
+  for (let i = 0; i < messages.length; i += PUSH_CHUNK) {
+    const batch = messages.slice(i, i + PUSH_CHUNK);
     try {
-      const tickets = await expo.sendPushNotificationsAsync(chunk);
-      tickets.forEach((ticket, i) => {
+      const res = await fetch(EXPO_PUSH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(batch),
+      });
+      const json = (await res.json()) as { data?: PushTicket[] };
+      (json.data ?? []).forEach((ticket, j) => {
         if (ticket.status === "ok") sent += 1;
         else if (ticket.details?.error === "DeviceNotRegistered") {
-          dead.push(String(chunk[i].to));
+          dead.push(batch[j].to);
         }
       });
     } catch (error) {
