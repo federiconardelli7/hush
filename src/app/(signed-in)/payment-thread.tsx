@@ -4,13 +4,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
-  KeyboardAvoidingView,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/KeyboardAvoiding";
 import { MentionText } from "@/components/MentionText";
 import { ReactionPicker } from "@/components/ReactionPicker";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -235,9 +235,10 @@ export default function PaymentThread() {
       <ScreenHeader title="Post" />
       <KeyboardAvoidingView
         style={styles.flex}
-        // "padding" on BOTH platforms: Android runs edge-to-edge (SDK 56), so the
-        // window no longer resizes for the keyboard — without padding the composer
-        // hides behind it. Web's KeyboardAvoidingView ignores behavior entirely.
+        // "padding" on BOTH platforms. Native resolves to keyboard-controller's
+        // WindowInsets-driven implementation (RN core's keyboard events are
+        // unreliable under Android 16 edge-to-edge: zero lift on the Pixel 10,
+        // under-padding on the emulator). Web's RN version ignores behavior.
         behavior="padding"
       >
         <FlatList

@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { WagmiProvider } from "wagmi";
+import { KeyboardProviderCompat } from "@/components/KeyboardProviderCompat";
 import { PrivyProviderWrapper } from "@/features/auth/PrivyProviderWrapper";
 import { ThemeProvider } from "@/design-system/theme";
 import { ProverHost } from "@/features/eerc/prover/ProverHost";
@@ -21,11 +22,14 @@ export default function RootLayout() {
         <WagmiProvider config={wagmiConfig}>
           <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-              <StatusBar style="auto" />
-              {/* Native-only ZK prover WebView (null on web) — at the root so the
-                  onboarding register proof can run before sign-in completes. */}
-              <ProverHost />
-              <Stack screenOptions={{ headerShown: false }} />
+              {/* Native: keyboard-controller's insets host (passthrough on web). */}
+              <KeyboardProviderCompat>
+                <StatusBar style="auto" />
+                {/* Native-only ZK prover WebView (null on web) — at the root so the
+                    onboarding register proof can run before sign-in completes. */}
+                <ProverHost />
+                <Stack screenOptions={{ headerShown: false }} />
+              </KeyboardProviderCompat>
             </ThemeProvider>
           </QueryClientProvider>
         </WagmiProvider>
