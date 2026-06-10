@@ -74,7 +74,13 @@ export default function SignedInLayout() {
                 <Tabs.Screen name="add-contact" options={{ href: null }} />
                 <Tabs.Screen name="contact" options={{ href: null }} />
                 <Tabs.Screen name="receipt" options={{ href: null }} />
-                <Tabs.Screen name="payment-thread" options={{ href: null }} />
+                {/* Full-screen like every message-composer screen (chat-app standard):
+                    no tab bar means no dead zone under the sticky composer, and the
+                    proven keyboard offset (insets.bottom + spacing.lg) is exact. */}
+                <Tabs.Screen
+                  name="payment-thread"
+                  options={{ href: null, tabBarStyle: { display: "none" } }}
+                />
                 <Tabs.Screen name="notification-settings" options={{ href: null }} />
                 <Tabs.Screen name="request-amount" options={{ href: null }} />
                 <Tabs.Screen name="edit-profile" options={{ href: null }} />
