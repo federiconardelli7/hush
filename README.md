@@ -3,10 +3,11 @@
 > Venmo-style **confidential payments** on Avalanche — amounts stay hidden, the social feed stays intact.
 
 **Live demo (Fuji testnet):** https://hush-rho-two.vercel.app
+**Android app (APK):** [download](https://expo.dev/artifacts/eas/P3YYYEZ5-Gcaw3yuClF5NneuFw8v5EZgzxIS4IVLzgk.apk) — same account and features as the web app, plus OS push notifications ("«name» paid you" on the lock screen — never the amount). Allow "install unknown apps" when prompted; not on a store yet.
 
 Hush is a consumer payments app built on Avalanche's **Encrypted ERC (eERC)**. Payment **amounts and balances are encrypted on-chain** and decrypted only on your device, while **who-paid-whom stays public** so a familiar social feed still works. Every payment can carry an **end-to-end encrypted memo** that only the sender and receiver can read.
 
-It's a **web-first** Expo / `react-native-web` single-page app: the eERC SDK generates Groth16 zero-knowledge proofs in the browser with snarkjs/WASM, so confidential transfers happen entirely client-side.
+One Expo codebase ships two ways: a **web SPA** (`react-native-web`) and a **native Android app**. The eERC SDK generates Groth16 zero-knowledge proofs entirely client-side — snarkjs/WASM in the browser on web, and a hidden System-WebView prover on Android (stock Hermes has no WebAssembly).
 
 > **Testnet proof-of-concept.** Runs on Avalanche Fuji with throwaway test tokens. Not audited; not for real funds.
 
